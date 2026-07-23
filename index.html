@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gazette — a daily guessing game for UPSC aspirants</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <div class="brand">
+      <h1 class="display">Gazette</h1>
+      <span class="tag">daily UPSC guessing game</span>
+    </div>
+    <div class="streak-pill">
+      <span class="flame">&#9679;</span>
+      <span>Streak <b id="streakVal">0</b></span>
+    </div>
+  </header>
+
+  <div class="puzzle-no mono" id="puzzleNo">Roll no. —</div>
+  <div id="loadingState" class="loading-state">Loading today's puzzles…</div>
+  <div id="errorState" class="error-state" style="display:none;">
+    Couldn't load the puzzle database.
+    <div class="detail" id="errorDetail"></div>
+  </div>
+  <div class="cats" id="catGrid"></div>
+
+  <footer>
+    Gazette resets daily at midnight. Progress and streaks are stored only on this device.
+  </footer>
+</div>
+
+<script src="vendor/xlsx.min.js"></script>
+<script src="data-loader.js"></script>
+<script src="common.js"></script>
+<script src="analytics.js"></script>
+<script>
+  track('home_view');
+  const PAGES = { scheme:'scheme.html', biodiversity:'biodiversity.html', indices:'indices.html', amendments:'amendments.html', history:'history.html' };
+
+  gazetteReady.then(function(data){
+    CATS = data.CATS; CAT_ORDER = data.CAT_ORDER; SCHEDULE = data.SCHEDULE; LAUNCH_DAY = data.LAUNCH_DAY;
+    document.getElementById('loadingState').style.display = 'none';
+
+    const catGrid = document.getElementById('catGrid');
+    CAT_ORDER.forEach(function(key){
+      const c = CATS[key];
+      const cs = catState(key);
+      const a = document.createElement('a');
+      a.className = 'ticket';
+      a.href = PAGES[key];
+      a.addEventListener('click', function(){ track('category_click', { category:key }); });
+      let statusHtml;
+      if(cs.done && cs.won) statusHtml = '<span class="status solved">Solved</span>';
+      else if(cs.done) statusHtml = '<span class="status played">Missed today</span>';
+      else statusHtml = '<span class="status open">Not played</span>';
+      a.innerHTML = '<span class="icon">'+c.icon+'</span>' +
+        '<span class="name">'+c.label+'</span>' +
+        '<span class="meta">'+c.fields.length+' clues per guess</span>' +
+        statusHtml;
+      catGrid.appendChild(a);
+    });
+    renderStreakBadge();
+  }).catch(function(err){
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorState').style.display = 'block';
+    document.getElementById('errorDetail').textContent = err.message;
+  });
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Protected areas — Gazette</title>
+<title>Protected areas - Gazette</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -12,19 +12,19 @@
 <body>
 <div class="wrap">
   <header class="site">
-    <a class="brand" href="index.html" style="display:flex;align-items:baseline;gap:12px;">
-      <h1 class="display">Gazette</h1>
-      <span class="tag">daily UPSC guessing game</span>
-    </a>
-    <div class="streak-pill">
-      <span class="flame">&#9679;</span>
-      <span>Streak <b id="streakVal">0</b></span>
+    <a class="brand-link" href="index.html"><h1 class="display brand-logo">Gazette</h1></a>
+    <div class="header-actions">
+      <button class="icon-btn" id="themeToggle" title="Toggle dark mode">&#9789;</button>
+      <button class="icon-btn" id="guideBtn" title="How to play">?</button>
+      <button class="icon-btn" id="feedbackBtn" title="Feedback">&#128172;</button>
+      <button class="streak-pill" id="streakBtn">
+        <span class="flame">&#9679;</span>
+        <span>Streak <b id="streakVal">0</b></span>
+      </button>
     </div>
   </header>
 
-  <a class="back-btn" href="index.html">&#8592; back to categories</a>
-
-  <div id="loadingState" class="loading-state">Loading today's puzzle…</div>
+  <div id="loadingState" class="loading-state">Loading today's puzzle...</div>
   <div id="errorState" class="error-state" style="display:none;">
     Couldn't load the puzzle database.
     <div class="detail" id="errorDetail"></div>
@@ -32,17 +32,19 @@
 
   <div id="gameBody" style="display:none;">
     <div class="game-head">
-      <h2 id="gameCatName"></h2>
-      <span class="counter">guess <span id="gnum">0</span> / 6</span>
+      <div class="game-head-left">
+        <h2 id="gameCatName"></h2>
+        <button class="icon-btn" id="exampleBtn" style="width:26px;height:26px;font-size:12px;" title="See an example">i</button>
+      </div>
+      <span class="counter">guess <span id="gnum">0</span> / <span id="maxGuesses">10</span></span>
     </div>
+    <p class="game-desc" id="gameDesc"></p>
 
     <div class="legend">
       <div class="litem"><span class="dot hit"></span> Exact match</div>
-      <div class="litem"><span class="dot near"></span> Close &mdash; same category, not exact</div>
-      <div class="litem"><span class="dot miss"></span> Off &mdash; &#8593; answer is higher, &#8595; answer is lower</div>
+      <div class="litem"><span class="dot near"></span> Close - same category, not exact</div>
+      <div class="litem"><span class="dot miss"></span> Off - arrow shows higher/lower</div>
     </div>
-
-    <div class="hint" id="exampleHint"></div>
 
     <div class="search-wrap">
       <input id="guessInput" type="text" placeholder="Type your guess..." autocomplete="off">
@@ -55,8 +57,8 @@
       <h3 id="resultTitle"></h3>
       <p id="resultBody"></p>
       <div class="result-actions">
-        <button class="btn" id="shareBtn"><span>&#8599;</span> Copy result</button>
-        <a class="btn" href="index.html">Back to categories</a>
+        <button class="btn primary" id="shareBtn"><span>&#8599;</span> Copy result</button>
+        <button class="btn" id="nativeShareBtn"><span>&#8599;</span> Share</button>
       </div>
       <div class="signup-box" id="signupBox">
         <p>Save your streak & get tomorrow's puzzle by email (optional)</p>
@@ -66,7 +68,7 @@
         </div>
       </div>
       <div class="share-fallback" id="shareFallback" style="display:none;">
-        <p>Couldn't auto-copy — select and copy manually:</p>
+        <p>Couldn't auto-copy - select and copy manually:</p>
         <textarea id="shareFallbackText" readonly></textarea>
       </div>
     </div>
@@ -75,6 +77,53 @@
   <footer>
     Gazette resets daily at midnight. Progress and streaks are stored only on this device.
   </footer>
+</div>
+
+
+  <div class="modal-overlay" id="guideModal">
+    <div class="modal-box">
+      <button class="modal-close" data-close-modal="guideModal">&times;</button>
+      <h3>How to play</h3>
+      <p>Each category has one puzzle a day. Type a guess and you'll see clues compared against today's answer:</p>
+      <div class="legend" style="margin-bottom:14px;">
+        <div class="litem"><span class="dot hit"></span> Exact match</div>
+        <div class="litem"><span class="dot near"></span> Close - same category, not exact</div>
+        <div class="litem"><span class="dot miss"></span> Off - arrow shows if the answer is higher or lower</div>
+      </div>
+      <p>You get 10 guesses per puzzle per day. Come back tomorrow for a new one in each category.</p>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="feedbackModal">
+    <div class="modal-box">
+      <button class="modal-close" data-close-modal="feedbackModal">&times;</button>
+      <h3>Feedback</h3>
+      <p>Feedback form coming soon. This is a placeholder for now.</p>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="streakModal">
+    <div class="modal-box">
+      <button class="modal-close" data-close-modal="streakModal">&times;</button>
+      <h3>Your streak: <span id="streakModalCount">0</span></h3>
+      <div id="streakModalSignedOut">
+        <p>This streak is saved only in this browser, on this device. Sign in to back it up and keep it if you switch phones or clear your browser data.</p>
+        <button class="btn primary" id="googleSignInBtn">Sign in with Google</button>
+      </div>
+      <div id="streakModalSignedIn" style="display:none;">
+        <p>You're signed in - your streak is backed up.</p>
+      </div>
+    </div>
+  </div>
+
+<div class="modal-overlay" id="exampleModal">
+  <div class="modal-box">
+    <button class="modal-close" data-close-modal="exampleModal">&times;</button>
+    <h3 id="exampleModalTitle"></h3>
+    <p id="exampleModalDesc"></p>
+    <div class="modal-example-name" id="exampleTilesName"></div>
+    <div id="exampleTiles"></div>
+  </div>
 </div>
 
 <script src="vendor/xlsx.min.js"></script>
@@ -87,6 +136,11 @@
     CATS = data.CATS; CAT_ORDER = data.CAT_ORDER; SCHEDULE = data.SCHEDULE; LAUNCH_DAY = data.LAUNCH_DAY;
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('gameBody').style.display = 'block';
+    document.getElementById('exampleModalTitle').textContent = CATS['biodiversity'].label;
+    document.getElementById('exampleModalDesc').textContent = CATS['biodiversity'].desc;
+    document.getElementById('exampleBtn').addEventListener('click', function(){
+      openModal('exampleModal'); track('example_opened', { category:'biodiversity' });
+    });
     initGame('biodiversity');
   }).catch(function(err){
     document.getElementById('loadingState').style.display = 'none';

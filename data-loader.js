@@ -16,11 +16,16 @@ const LAUNCH_DATE_STR = '2026-07-23'; // day 1, for the "Roll no." counter
 const DB_URL = 'database/gazette_database.xlsx';
 
 const META = {
-  scheme:       { label: 'Government schemes',       icon: '&#127970;', example: 'PM-KUSUM' },
-  biodiversity: { label: 'Protected areas',           icon: '&#127795;', example: 'Kaziranga National Park' },
-  indices:      { label: 'Indices & reports',         icon: '&#127760;', example: 'Human Development Index' },
-  amendments:   { label: 'Constitutional amendments', icon: '&#9878;',   example: '73rd Amendment — Panchayati Raj' },
-  history:      { label: 'Modern history',            icon: '&#127988;', example: 'Champaran Satyagraha' },
+  scheme:       { label: 'Government schemes',       icon: '&#127970;', example: 'PM-KUSUM',
+                  hint: 'Guess the scheme', desc: 'Guess a real central government scheme from clues about when it launched, which ministry runs it, and who it targets.' },
+  biodiversity: { label: 'Protected areas',           icon: '&#127795;', example: 'Kaziranga National Park',
+                  hint: 'Guess the park or reserve', desc: 'Guess a national park or protected area from clues about its state, size, and famous species.' },
+  indices:      { label: 'Indices & reports',         icon: '&#127760;', example: 'Human Development Index',
+                  hint: 'Guess the index or report', desc: 'Guess a global index or report from clues about India\u2019s rank, who publishes it, and when it started.' },
+  amendments:   { label: 'Constitutional amendments', icon: '&#9878;',   example: '73rd Amendment: Panchayati Raj',
+                  hint: 'Guess the amendment', desc: 'Guess a constitutional amendment from clues about its number, year, subject, and the government that passed it.' },
+  history:      { label: 'Modern history',            icon: '&#127988;', example: 'Champaran Satyagraha',
+                  hint: 'Guess the movement or event', desc: 'Guess a movement or event from the freedom struggle from clues about its year, leader, and region.' },
 };
 
 const TAB_PREFIX = { scheme:'Schemes', biodiversity:'Biodiversity', indices:'Indices', amendments:'Amendments', history:'History' };
@@ -146,7 +151,7 @@ function loadGazetteData(){
           if(complete) pool.push(item);
         });
 
-        CATS[key] = { label: META[key].label, icon: META[key].icon, example: META[key].example, pool: pool, fields: fields };
+        CATS[key] = { label: META[key].label, icon: META[key].icon, example: META[key].example, hint: META[key].hint, desc: META[key].desc, pool: pool, fields: fields };
         SCHEDULE[key] = seededShuffle(pool.map(function(p){ return p.name; }), 'gazette-' + key);
       });
 

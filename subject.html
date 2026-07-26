@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gazette</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="site">
+    <a class="brand-link" href="index.html"><h1 class="display brand-logo">Gazette</h1></a>
+    <div class="header-actions">
+      <button class="icon-btn" id="themeToggle" title="Toggle dark mode">&#127769;</button>
+      <button class="icon-btn" id="guideBtn" title="How to play">?</button>
+      <button class="icon-btn" id="feedbackBtn" title="Feedback">&#128221;</button>
+      <button class="streak-pill" id="streakBtn">
+        <span class="flame">&#9679;</span>
+        <span>Streak <b id="streakVal">0</b></span>
+      </button>
+    </div>
+  </header>
+
+  <a class="back-btn" href="index.html">&#8592; all subjects</a>
+  <div id="loadingState" class="loading-state">Loading...</div>
+  <div id="errorState" class="error-state" style="display:none;">
+    Couldn't load the puzzle database.
+    <div class="detail" id="errorDetail"></div>
+  </div>
+  <h2 id="subjectTitle" style="display:none;margin-bottom:16px;"></h2>
+  <div class="cats" id="leafGrid"></div>
+
+  <footer>
+    Gazette resets daily at midnight. Progress and streaks are stored only on this device.
+  </footer>
+</div>
+
+
+  <div class="modal-overlay" id="guideModal">
+    <div class="modal-box">
+      <button class="modal-close" data-close-modal="guideModal">&times;</button>
+      <h3>How to play</h3>
+      <p>Each category has one puzzle a day. Take your first guess blind - that's normal, nobody gets it on guess one. Type a guess and you'll see clues compared against today's answer:</p>
+      <div class="legend" style="margin-bottom:14px;">
+        <div class="litem"><span class="dot hit"></span> Exact match</div>
+        <div class="litem"><span class="dot near"></span> Close - same category, not exact</div>
+        <div class="litem"><span class="dot grad"></span> Numbers use a gradient - the closer the shade to green, the closer your guess</div>
+      </div>
+      <p>You get 10 guesses per puzzle per day, plus 5 optional hints that reveal one letter of the answer at a time. Typos and common alternate names are usually recognised. Come back tomorrow for a new puzzle in each category.</p>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="feedbackModal">
+    <div class="modal-box">
+      <button class="modal-close" data-close-modal="feedbackModal">&times;</button>
+      <h3>Feedback</h3>
+      <p>Spotted something off, or have an idea? Tell us here:</p>
+      <a class="btn primary" href="https://forms.gle/BuumpbzTVJRQxQcK7" target="_blank" rel="noopener">Open feedback form</a>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="streakModal">
+    <div class="modal-box">
+      <button class="modal-close" data-close-modal="streakModal">&times;</button>
+      <h3>Your streak: <span id="streakModalCount">0</span></h3>
+      <div id="streakModalSignedOut">
+        <p>This streak is saved only in this browser, on this device. Sign in to back it up and keep it if you switch phones or clear your browser data.</p>
+        <button class="btn primary" id="googleSignInBtn">Sign in with Google</button>
+      </div>
+      <div id="streakModalSignedIn" style="display:none;">
+        <p>You're signed in - your streak is backed up.</p>
+      </div>
+    </div>
+  </div>
+
+<div id="exampleModals"></div>
+
+<script src="vendor/xlsx.min.js"></script>
+<script src="data-loader.js"></script>
+<script src="common.js"></script>
+<script src="analytics.js"></script>
+<script src="game.js"></script>
+<script>
+  const LEAF_PAGES = {
+    scheme:'scheme.html', biodiversity:'biodiversity.html', indices:'indices.html', amendments:'amendments.html',
+    history:'modern-history.html', ancient_history:'ancient-history.html', medieval_history:'medieval-history.html',
+    rivers:'rivers.html', mountains:'mountains.html'
+  };
+  const params = new URLSearchParams(window.location.search);
+  const sKey = params.get('s');
+
+  gazetteReady.then(function(data){
+    CATS = data.CATS; CAT_ORDER = data.CAT_ORDER; SCHEDULE = data.SCHEDULE; LAUNCH_DAY = data.LAUNCH_DAY;
+    document.getElementById('loadingState').style.display = 'none';
+    const subject = data.SUBJECTS[sKey];
+    if(!subject){
+      document.getElementById('errorState').style.display = 'block';
+      document.getElementById('errorDetail').textContent = 'Unknown subject: ' + sKey;
+      return;
+    }
+    document.getElementById('subjectTitle').textContent = subject.label;
+    document.getElementById('subjectTitle').style.display = 'block';
+    track('subject_view', { subject:sKey });
+
+    const grid = document.getElementById('leafGrid');
+    const exampleModals = document.getElementById('exampleModals');
+    subject.leaves.forEach(function(lk){
+      const c = CATS[lk];
+      const cs = catState(lk);
+      const a = document.createElement('a');
+      a.className = 'ticket';
+      a.href = LEAF_PAGES[lk];
+      a.addEventListener('click', function(){ track('category_click', { category:lk }); });
+      let statusHtml;
+      if(cs.done && cs.won) statusHtml = '<span class="status solved">Solved</span>';
+      else if(cs.done) statusHtml = '<span class="status played">Missed today</span>';
+      else statusHtml = '<span class="status open">Not played</span>';
+      a.innerHTML = '<span class="icon">'+c.icon+'</span>' +
+        '<button class="icon-btn" style="width:26px;height:26px;font-size:12px;position:absolute;top:16px;right:16px;" data-info-key="'+lk+'" title="See an example">i</button>' +
+        '<span class="name">'+c.label+'</span>' +
+        '<span class="meta">'+c.hint+' - '+c.desc+'</span>' +
+        statusHtml;
+      grid.appendChild(a);
+      a.querySelector('[data-info-key]').addEventListener('click', function(e){
+        e.preventDefault(); e.stopPropagation();
+        openModal('example_' + lk);
+        track('example_opened', { category:lk });
+      });
+
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.id = 'example_' + lk;
+      modal.innerHTML = '<div class="modal-box"><button class="modal-close" data-close-modal="example_'+lk+'">&times;</button>' +
+        '<h3>'+c.label+'</h3><p>'+c.desc+'</p>' +
+        '<div class="modal-example-name" id="exTiles_'+lk+'Name"></div>' +
+        '<div id="exTiles_'+lk+'"></div></div>';
+      exampleModals.appendChild(modal);
+      renderExampleTiles(c, 'exTiles_' + lk);
+    });
+    renderStreakBadge();
+    document.querySelectorAll('[data-close-modal]').forEach(function(btn){
+      btn.addEventListener('click', function(){ closeModal(btn.getAttribute('data-close-modal')); });
+    });
+    document.querySelectorAll('.modal-overlay').forEach(function(ov){
+      ov.addEventListener('click', function(e){ if(e.target === ov) ov.classList.remove('open'); });
+    });
+  }).catch(function(err){
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorState').style.display = 'block';
+    document.getElementById('errorDetail').textContent = err.message;
+  });
+</script>
+</body>
+</html>

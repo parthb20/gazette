@@ -1,10 +1,39 @@
 const MAX_GUESSES = 10;
+const MAX_HINTS = 5;
+
+function parseThemeColor(varName){
+  const v = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  const hex = v.replace('#','');
+  return [0,2,4].map(function(i){ return parseInt(hex.substr(i,2),16); });
+}
+function lerpColor(c1, c2, t){
+  return [0,1,2].map(function(i){ return Math.round(c1[i] + (c2[i]-c1[i]) * t); });
+}
+function numericGradientStyle(relDist){
+  relDist = Math.max(0, Math.min(1, relDist));
+  const green = parseThemeColor('--stamp-green'), amber = parseThemeColor('--stamp-amber'), red = parseThemeColor('--stamp-red');
+  const greenBg = parseThemeColor('--stamp-green-bg'), amberBg = parseThemeColor('--stamp-amber-bg'), redBg = parseThemeColor('--stamp-red-bg');
+  let fg, bg;
+  if(relDist <= 0.5){
+    const t = relDist / 0.5;
+    fg = lerpColor(green, amber, t); bg = lerpColor(greenBg, amberBg, t);
+  } else {
+    const t = (relDist - 0.5) / 0.5;
+    fg = lerpColor(amber, red, t); bg = lerpColor(amberBg, redBg, t);
+  }
+  return 'background:rgb('+bg.join(',')+');color:rgb('+fg.join(',')+');border-color:rgb('+fg.join(',')+');';
+}
+
+function formatYear(v){
+  return v < 0 ? (Math.abs(v) + ' BCE') : (v + ' CE');
+}
 
 function renderExampleTiles(c, containerId){
   const target = c.pool[0];
   const html = c.fields.map(function(f){
     const v = target[f.k];
-    return '<div class="stamp hit"><div class="val">'+v+'</div><div class="lab">'+f.l+'</div></div>';
+    const displayVal = f.isYear ? formatYear(v) : v;
+    return '<div class="stamp hit"><div class="val">'+displayVal+'</div><div class="lab">'+f.l+'</div></div>';
   }).join('');
   const el = document.getElementById(containerId);
   if(el){
@@ -41,12 +70,15 @@ function initGame(key){
     row.className = 'guess-row';
     const tilesHtml = c.fields.map(function(f){
       const gv = guessObj[f.k], tv = target[f.k];
-      const cls = tileClass(f, gv, tv);
-      let val = gv;
-      if(f.t === 'n' && cls === 'miss'){
-        val = gv + ' ' + (gv < tv ? '&#8593;' : '&#8595;');
+      if(f.t === 'n'){
+        const displayGv = f.isYear ? formatYear(gv) : gv;
+        if(gv === tv) return '<div class="stamp hit"><div class="val">'+displayGv+'</div><div class="lab">'+f.l+'</div></div>';
+        const relDist = Math.abs(gv - tv) / Math.max(Math.abs(tv), 1);
+        const arrow = gv < tv ? '&#8593;' : '&#8595;';
+        return '<div class="stamp" style="'+numericGradientStyle(relDist)+'"><div class="val">'+displayGv+' '+arrow+'</div><div class="lab">'+f.l+'</div></div>';
       }
-      return '<div class="stamp '+cls+'"><div class="val">'+val+'</div><div class="lab">'+f.l+'</div></div>';
+      const cls = tileClass(f, gv, tv);
+      return '<div class="stamp '+cls+'"><div class="val">'+gv+'</div><div class="lab">'+f.l+'</div></div>';
     }).join('');
     row.innerHTML = '<div class="glabel"><span class="num">'+num+'</span>'+guessName+'</div><div class="tiles">'+tilesHtml+'</div>';
     rows.insertBefore(row, rows.firstChild); // latest guess on top
@@ -54,6 +86,7 @@ function initGame(key){
 
   function finishUI(won){
     input.disabled = true;
+    if(hintBtn) hintBtn.disabled = true;
     resultCard.style.display = 'block';
     resultCard.classList.toggle('lost', !won);
     resultCard.classList.toggle('won', won);
@@ -95,12 +128,42 @@ function initGame(key){
     saveState(state);
   }
 
+  const hintBtn = document.getElementById('hintBtn');
+  function renderHint(){
+    const revealed = cs.hintsUsed;
+    const maskedChars = target.name.split('').map(function(ch, i){
+      if(ch === ' ' || ch === '-' || ch === ':') return ch;
+      return i < revealed ? ch : '_';
+    });
+    // reveal letters left-to-right skipping spaces for the "revealed count"
+    let shown = 0, out = [];
+    for(let i = 0; i < target.name.length; i++){
+      const ch = target.name[i];
+      if(ch === ' ' || ch === '-' || ch === ':'){ out.push(ch); continue; }
+      if(shown < revealed){ out.push(ch); shown++; } else { out.push('_'); }
+    }
+    document.getElementById('hintDisplay').textContent = out.join('');
+    document.getElementById('hintCount').textContent = (MAX_HINTS - revealed);
+    if(revealed >= MAX_HINTS || cs.done) hintBtn.disabled = true;
+  }
+  if(hintBtn){
+    hintBtn.addEventListener('click', function(){
+      if(cs.hintsUsed >= MAX_HINTS || cs.done) return;
+      cs.hintsUsed++;
+      saveState(state);
+      track('hint_used', { category:key, hints_used: cs.hintsUsed });
+      document.getElementById('hintBox').style.display = 'block';
+      renderHint();
+    });
+    if(cs.hintsUsed > 0){ document.getElementById('hintBox').style.display = 'block'; renderHint(); }
+  }
+
   input.addEventListener('input', function(){
     const q = input.value.trim().toLowerCase();
     suggestBox.innerHTML = '';
     if(!q){ suggestBox.style.display = 'none'; return; }
     const already = new Set(cs.guesses);
-    const matches = c.pool.filter(function(s){ return s.name.toLowerCase().includes(q) && !already.has(s.name); }).slice(0,6);
+    const matches = c.pool.filter(function(s){ return fuzzyMatchesQuery(s, q) && !already.has(s.name); }).slice(0,6);
     if(!matches.length){ suggestBox.style.display = 'none'; return; }
     matches.forEach(function(m){
       const opt = document.createElement('div');

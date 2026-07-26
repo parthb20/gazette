@@ -24,7 +24,8 @@ if(!state.day || state.day !== DAY){
   saveState(state);
 }
 function catState(key){
-  if(!state.progress[key]) state.progress[key] = { guesses: [], done:false, won:false };
+  if(!state.progress[key]) state.progress[key] = { guesses: [], done:false, won:false, hintsUsed:0 };
+  if(state.progress[key].hintsUsed === undefined) state.progress[key].hintsUsed = 0;
   return state.progress[key];
 }
 function tileClass(f, gv, tv){

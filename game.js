@@ -10,15 +10,15 @@ function lerpColor(c1, c2, t){
   return [0,1,2].map(function(i){ return Math.round(c1[i] + (c2[i]-c1[i]) * t); });
 }
 function numericGradientStyle(relDist){
-  relDist = Math.max(0, Math.min(1, relDist));
+  const effective = Math.max(0, Math.min(1, relDist / 0.6)); // full red by 60% off, not 100%
   const green = parseThemeColor('--stamp-green'), amber = parseThemeColor('--stamp-amber'), red = parseThemeColor('--stamp-red');
   const greenBg = parseThemeColor('--stamp-green-bg'), amberBg = parseThemeColor('--stamp-amber-bg'), redBg = parseThemeColor('--stamp-red-bg');
   let fg, bg;
-  if(relDist <= 0.5){
-    const t = relDist / 0.5;
+  if(effective <= 0.5){
+    const t = effective / 0.5;
     fg = lerpColor(green, amber, t); bg = lerpColor(greenBg, amberBg, t);
   } else {
-    const t = (relDist - 0.5) / 0.5;
+    const t = (effective - 0.5) / 0.5;
     fg = lerpColor(amber, red, t); bg = lerpColor(amberBg, redBg, t);
   }
   return 'background:rgb('+bg.join(',')+');color:rgb('+fg.join(',')+');border-color:rgb('+fg.join(',')+');';
@@ -90,13 +90,16 @@ function initGame(key){
     resultCard.style.display = 'block';
     resultCard.classList.toggle('lost', !won);
     resultCard.classList.toggle('won', won);
+    const answerEl = document.getElementById('resultAnswer');
     if(won){
       document.getElementById('resultTitle').textContent = 'Solved in ' + cs.guesses.length + (cs.guesses.length>1 ? ' guesses' : ' guess');
-      document.getElementById('resultBody').textContent = 'Today\u2019s ' + c.label.toLowerCase().replace(/s$/,'') + ' was ' + target.name + '.';
+      document.getElementById('resultBody').textContent = 'Today\u2019s ' + c.label.toLowerCase().replace(/s$/,'') + ' was:';
     } else {
       document.getElementById('resultTitle').textContent = 'Out of guesses';
-      document.getElementById('resultBody').textContent = 'Today\u2019s answer was ' + target.name + '. Back tomorrow for a new one.';
+      document.getElementById('resultBody').textContent = 'Today\u2019s answer was:';
     }
+    if(answerEl) answerEl.textContent = target.name;
+    resultCard.scrollIntoView({ behavior:'smooth', block:'start' });
   }
 
   function registerWinForStreak(){
@@ -131,11 +134,6 @@ function initGame(key){
   const hintBtn = document.getElementById('hintBtn');
   function renderHint(){
     const revealed = cs.hintsUsed;
-    const maskedChars = target.name.split('').map(function(ch, i){
-      if(ch === ' ' || ch === '-' || ch === ':') return ch;
-      return i < revealed ? ch : '_';
-    });
-    // reveal letters left-to-right skipping spaces for the "revealed count"
     let shown = 0, out = [];
     for(let i = 0; i < target.name.length; i++){
       const ch = target.name[i];
@@ -143,6 +141,7 @@ function initGame(key){
       if(shown < revealed){ out.push(ch); shown++; } else { out.push('_'); }
     }
     document.getElementById('hintDisplay').textContent = out.join('');
+    document.getElementById('hintProgress').textContent = 'Hint ' + revealed + ' of ' + MAX_HINTS;
     document.getElementById('hintCount').textContent = (MAX_HINTS - revealed);
     if(revealed >= MAX_HINTS || cs.done) hintBtn.disabled = true;
   }
@@ -178,22 +177,16 @@ function initGame(key){
     if(!e.target.closest('.search-wrap')) suggestBox.style.display = 'none';
   });
 
-  function buildGrid(){
-    let grid = 'Gazette - ' + c.label + '\n';
-    cs.guesses.forEach(function(gName){
-      const guessObj = c.pool.find(function(s){ return s.name === gName; });
-      const line = c.fields.map(function(f){
-        const cls = tileClass(f, guessObj[f.k], target[f.k]);
-        return cls === 'hit' ? '\u{1F7E9}' : cls === 'near' ? '\u{1F7E8}' : '\u{1F7E5}';
-      }).join('');
-      grid += line + '\n';
-    });
-    grid += cs.won ? (cs.guesses.length + '/' + MAX_GUESSES) : ('X/' + MAX_GUESSES);
-    return grid;
+  function buildShareText(){
+    const siteUrl = window.location.origin + window.location.pathname.replace(/[^/]+$/, '') + 'index.html';
+    if(cs.won){
+      return `I just solved today's Gazette (${c.label}) in ${cs.guesses.length} guess${cs.guesses.length>1?'es':''}! Can you beat me?\n${siteUrl}`;
+    }
+    return `Today's Gazette (${c.label}) puzzle got me! Think you can solve it?\n${siteUrl}`;
   }
 
   document.getElementById('shareBtn').addEventListener('click', function(){
-    const grid = buildGrid();
+    const grid = buildShareText();
     track('share_copied', { category:key });
 
     function showFallback(){
@@ -224,7 +217,7 @@ function initGame(key){
     if(navigator.share){
       nativeShareBtn.addEventListener('click', function(){
         track('native_share', { category:key });
-        navigator.share({ text: buildGrid() }).catch(function(){});
+        navigator.share({ text: buildShareText() }).catch(function(){});
       });
     } else {
       nativeShareBtn.style.display = 'none';

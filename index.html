@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <title>Gazette</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,9 +15,8 @@
   <header class="site">
     <a class="brand-link" href="index.html"><h1 class="display brand-logo">Gazette</h1></a>
     <div class="header-actions">
-      <button class="icon-btn" id="themeToggle" title="Toggle dark mode">&#127769;</button>
-      <button class="icon-btn" id="guideBtn" title="How to play">?</button>
-      <button class="icon-btn" id="feedbackBtn" title="Feedback">&#128221;</button>
+      <button class="icon-btn" id="themeToggle" title="Toggle dark mode"><span class="ico">&#127769;</span><span class="lbl" id="themeLabel">Dark</span></button>
+      <button class="icon-btn" id="feedbackBtn" title="Feedback"><span class="ico">&#128221;</span><span class="lbl">Feedback</span></button>
       <button class="streak-pill" id="streakBtn">
         <span class="flame">&#9679;</span>
         <span>Streak <b id="streakVal">0</b></span>
@@ -42,19 +42,6 @@
 </div>
 
 
-  <div class="modal-overlay" id="guideModal">
-    <div class="modal-box">
-      <button class="modal-close" data-close-modal="guideModal">&times;</button>
-      <h3>How to play</h3>
-      <p>Each category has one puzzle a day. Take your first guess blind - that's normal, nobody gets it on guess one. Type a guess and you'll see clues compared against today's answer:</p>
-      <div class="legend" style="margin-bottom:14px;">
-        <div class="litem"><span class="dot hit"></span> Exact match</div>
-        <div class="litem"><span class="dot near"></span> Close - same category, not exact</div>
-        <div class="litem"><span class="dot grad"></span> Numbers use a gradient - the closer the shade to green, the closer your guess</div>
-      </div>
-      <p>You get 10 guesses per puzzle per day, plus 5 optional hints that reveal one letter of the answer at a time. Typos and common alternate names are usually recognised. Come back tomorrow for a new puzzle in each category.</p>
-    </div>
-  </div>
 
   <div class="modal-overlay" id="feedbackModal">
     <div class="modal-box">

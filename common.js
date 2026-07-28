@@ -43,7 +43,12 @@ function applyTheme(t){
   document.documentElement.setAttribute('data-theme', t);
   localStorage.setItem('gazette_theme', t);
   const btn = document.getElementById('themeToggle');
-  if(btn) btn.innerHTML = t === 'dark' ? '&#9788;' : '&#9789;';
+  if(btn){
+    const ico = btn.querySelector('.ico');
+    const lbl = btn.querySelector('.lbl');
+    if(ico) ico.innerHTML = t === 'dark' ? '&#9788;' : '&#127769;';
+    if(lbl) lbl.textContent = t === 'dark' ? 'Light' : 'Dark';
+  }
 }
 function initTheme(){
   applyTheme(localStorage.getItem('gazette_theme') || 'light');
@@ -67,8 +72,11 @@ function wireHeader(){
     applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
   });
 
-  const guideBtn = document.getElementById('guideBtn');
-  if(guideBtn) guideBtn.addEventListener('click', function(){ openModal('guideModal'); track('guide_opened'); });
+  const backBtn = document.getElementById('backBtn');
+  if(backBtn) backBtn.addEventListener('click', function(){
+    if(window.history.length > 1) window.history.back();
+    else window.location.href = 'index.html';
+  });
 
   const feedbackBtn = document.getElementById('feedbackBtn');
   if(feedbackBtn) feedbackBtn.addEventListener('click', function(){ openModal('feedbackModal'); track('feedback_opened'); });

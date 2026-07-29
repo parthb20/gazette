@@ -13,16 +13,12 @@
 <body>
 <div class="wrap">
   <header class="site">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <button class="back-icon-btn" id="backBtn" title="Go back">&#8592;</button>
-      <a class="brand-link" href="index.html"><h1 class="display brand-logo">Gazette</h1></a>
-    </div>
+    <a class="brand-link" href="index.html"><h1 class="display brand-logo">Gazette</h1></a>
     <div class="header-actions">
-      <button class="icon-btn" id="themeToggle" title="Toggle dark mode"><span class="ico">&#127769;</span><span class="lbl" id="themeLabel">Dark</span></button>
-      <button class="icon-btn" id="feedbackBtn" title="Feedback"><span class="ico">&#128221;</span><span class="lbl">Feedback</span></button>
-      <button class="streak-pill" id="streakBtn">
-        <span class="flame">&#9679;</span>
-        <span>Streak <b id="streakVal">0</b></span>
+      <button class="icon-btn" id="themeToggle" title="Toggle dark mode"><span class="ico">&#127769;</span></button>
+      <button class="icon-btn" id="feedbackBtn" title="Feedback"><span class="ico">&#128221;</span></button>
+      <button class="streak-pill" id="streakBtn" title="Streak">
+        <span class="flame">&#9679;</span><b id="streakVal">0</b>
       </button>
     </div>
   </header>
@@ -36,25 +32,26 @@
   <div id="gameBody" style="display:none;">
     <div class="game-head">
       <div class="game-head-left">
+        <button class="back-icon-btn" id="backBtn" title="Go back"><span>&#8592;</span><span id="backLabel"></span></button>
         <h2 id="gameCatName"></h2>
-        <button class="icon-btn" id="exampleBtn" style="width:26px;height:26px;font-size:12px;" title="Rules & example">i</button>
+        <button class="icon-btn" id="exampleBtn" style="width:30px;height:30px;font-size:12px;" title="Rules & example">i</button>
       </div>
-      <button class="hint-toggle-btn" id="hintBtn">&#128161; Hint (<span id="hintCount">5</span> left)</button>
-    </div>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
-      <span class="counter">guess <span id="gnum">0</span> / <span id="maxGuesses">10</span></span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="counter">guess <span id="gnum">0</span>/<span id="maxGuesses">10</span></span>
+        <button class="hint-toggle-btn" id="hintBtn" title="Hint">&#128161;<span class="badge" id="hintCount">5</span></button>
+      </div>
     </div>
     <p class="game-desc" id="gameDesc"></p>
-    <p class="game-desc" style="font-style:italic;">Your first guess is a blind one - that's normal, just take your best shot to get started.</p>
 
     <!-- Result card sits here, at the TOP, so a win/loss is the first thing you see -->
     <div class="result-card" id="resultCard">
       <h3 id="resultTitle"></h3>
       <p id="resultBody"></p>
       <div class="result-answer" id="resultAnswer"></div>
+      <div id="resultStats"></div>
       <div class="result-actions">
-        <button class="btn primary" id="shareBtn"><span>&#8599;</span> Copy result</button>
-        <button class="btn" id="nativeShareBtn"><span>&#8599;</span> Share</button>
+        <button class="btn primary" id="shareBtn"><span>&#128203;</span> Copy result</button>
+        <button class="btn" id="nativeShareBtn"><span>&#128228;</span> Share</button>
       </div>
       <div class="signup-box" id="signupBox">
         <p>Save your streak & get tomorrow's puzzle by email (optional)</p>
@@ -70,13 +67,13 @@
     </div>
 
     <div class="legend">
-      <div class="litem"><span class="dot hit"></span> Exact match</div>
-      <div class="litem"><span class="dot near"></span> Close - same category, not exact</div>
-      <div class="litem"><span class="dot grad"></span> Numbers: gradient shows how close, arrow shows higher/lower</div>
+      <span class="glabel">EXACT</span>
+      <div class="gbar"></div>
+      <span class="glabel">WAY OFF</span>
     </div>
 
     <div class="hint-box" id="hintBox" style="display:none;">
-      <div class="hint-progress" id="hintProgress">Hint 0 of 5</div>
+      <span class="hint-progress" id="hintProgress">0/5</span>
       <span class="mono" id="hintDisplay"></span>
     </div>
 
@@ -120,9 +117,8 @@
 <div class="modal-overlay" id="exampleModal">
   <div class="modal-box">
     <button class="modal-close" data-close-modal="exampleModal">&times;</button>
-    <h3 id="exampleModalTitle"></h3>
-    <p id="exampleModalDesc"></p>
-    <p style="font-size:12.5px;color:var(--ink-muted);">10 guesses and 5 letter-reveal hints per puzzle. Typos and common alternate names are usually recognised. A new puzzle in each category every day.</p>
+    <h3>How this puzzle works</h3>
+    <p>You get 10 guesses and 5 letter-reveal hints. Typos and common alternate names are usually recognised. A new puzzle in this category every day.</p>
     <div class="modal-example-name" id="exampleTilesName"></div>
     <div id="exampleTiles"></div>
   </div>
@@ -138,8 +134,16 @@
     CATS = data.CATS; CAT_ORDER = data.CAT_ORDER; SCHEDULE = data.SCHEDULE; LAUNCH_DAY = data.LAUNCH_DAY;
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('gameBody').style.display = 'block';
-    document.getElementById('exampleModalTitle').textContent = CATS['medieval_history'].label;
-    document.getElementById('exampleModalDesc').textContent = CATS['medieval_history'].desc;
+
+    const subjKey = data.LEAF_TO_SUBJECT['medieval_history'];
+    const subj = data.SUBJECTS[subjKey];
+    const backLabel = document.getElementById('backLabel');
+    if(subj) backLabel.textContent = subj.label;
+    document.getElementById('backBtn').addEventListener('click', function(){
+      if(window.history.length > 1) window.history.back();
+      else window.location.href = 'index.html';
+    });
+
     document.getElementById('exampleBtn').addEventListener('click', function(){
       openModal('exampleModal'); track('example_opened', { category:'medieval_history' });
     });

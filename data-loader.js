@@ -17,23 +17,23 @@ const DB_URL = 'database/gazette_database.xlsx';
 
 const META = {
   scheme:       { label: 'Government schemes',       icon: '&#127970;', example: 'PM-KUSUM',
-                  hint: 'Guess the scheme', desc: 'Guess a real central government scheme from clues about when it launched, which ministry runs it, and who it targets.' },
+                  hint: 'Guess the government scheme', desc: 'Guess a real central government scheme from clues about when it launched, which ministry runs it, and who it targets.' },
   biodiversity: { label: 'Protected areas',           icon: '&#127795;', example: 'Kaziranga National Park',
-                  hint: 'Guess the park or reserve', desc: 'Guess a national park or protected area from clues about its state, size, and famous species.' },
+                  hint: 'Guess the national park or reserve', desc: 'Guess a national park or protected area from clues about its state, size, and famous species.' },
   indices:      { label: 'Indices & reports',         icon: '&#127760;', example: 'Human Development Index',
-                  hint: 'Guess the index or report', desc: 'Guess a global index or report from clues about India\u2019s rank, who publishes it, and when it started.' },
+                  hint: 'Guess the global index or report', desc: 'Guess a global index or report from clues about India\u2019s rank, who publishes it, and when it started.' },
   amendments:   { label: 'Constitutional amendments', icon: '&#9878;',   example: '73rd Amendment: Panchayati Raj',
-                  hint: 'Guess the amendment', desc: 'Guess a constitutional amendment from clues about its number, year, subject, and the government that passed it.' },
+                  hint: 'Guess the constitutional amendment', desc: 'Guess a constitutional amendment from clues about its number, year, subject, and the government that passed it.' },
   history:      { label: 'Modern history',            icon: '&#127988;', example: 'Champaran Satyagraha',
-                  hint: 'Guess the movement or event', desc: 'Guess a movement or event from the freedom struggle from clues about its year, leader, and region.' },
+                  hint: 'Guess the freedom movement or event', desc: 'Guess a movement or event from the freedom struggle from clues about its year, leader, and region.' },
   ancient_history: { label: 'Ancient history',        icon: '&#127961;', example: 'Maurya Empire',
-                  hint: 'Guess the dynasty or era', desc: 'Guess an ancient Indian dynasty or era from clues about when it ruled, its capital region, and what it\u2019s known for.' },
+                  hint: 'Guess the ancient dynasty or era', desc: 'Guess an ancient Indian dynasty or era from clues about when it ruled, its capital region, and what it\u2019s known for.' },
   medieval_history: { label: 'Medieval history',      icon: '&#127984;', example: 'Mughal Empire',
-                  hint: 'Guess the dynasty or empire', desc: 'Guess a medieval Indian dynasty or empire from clues about when it ruled, its founder, and its capital.' },
+                  hint: 'Guess the medieval dynasty or empire', desc: 'Guess a medieval Indian dynasty or empire from clues about when it ruled, its founder, and its capital.' },
   rivers:       { label: 'Rivers of India',           icon: '&#127754;', example: 'Ganga',
-                  hint: 'Guess the river', desc: 'Guess an Indian river from clues about its length, where it originates, and which sea it flows into.' },
+                  hint: 'Guess the Indian river', desc: 'Guess an Indian river from clues about its length, where it originates, and which sea it flows into.' },
   mountains:    { label: 'Mountains & peaks',         icon: '&#9968;',   example: 'Kangchenjunga',
-                  hint: 'Guess the peak or range', desc: 'Guess an Indian mountain peak from clues about its height, range, and state.' },
+                  hint: 'Guess the mountain peak or range', desc: 'Guess an Indian mountain peak from clues about its height, range, and state.' },
 };
 
 const SUBJECTS = {
@@ -44,6 +44,9 @@ const SUBJECTS = {
   environment: { label: 'Environment & Ecology', icon: '&#127795;', leaves: ['biodiversity'] },
   current_affairs: { label: 'Current Affairs',   icon: '&#127760;', leaves: ['indices'] },
 };
+
+const LEAF_TO_SUBJECT = {};
+Object.keys(SUBJECTS).forEach(function(sk){ SUBJECTS[sk].leaves.forEach(function(lk){ LEAF_TO_SUBJECT[lk] = sk; }); });
 
 const TAB_PREFIX = { scheme:'Schemes', biodiversity:'Biodiversity', indices:'Indices', amendments:'Amendments', history:'History',
   ancient_history:'AncientHistory', medieval_history:'MedievalHistory', rivers:'Rivers', mountains:'Mountains' };
@@ -67,7 +70,7 @@ const FIELD_MAPS = {
   ],
   indices: [
     ['india_rank','rank','India rank','n'],
-    ['countries_ranked','total','Countries ranked','n'],
+    ['countries_ranked','total','Total countries ranked','n'],
     ['year_started','year','Year started','n'],
     ['publishing_body','body','Publishing body','c'],
   ],
@@ -206,7 +209,7 @@ function loadGazetteData(){
       const launchDate = new Date(LAUNCH_DATE_STR + 'T00:00:00Z');
       const LAUNCH_DAY = Math.floor(launchDate.getTime() / 86400000);
 
-      return { CATS: CATS, CAT_ORDER: GAZETTE_CAT_ORDER, SCHEDULE: SCHEDULE, LAUNCH_DAY: LAUNCH_DAY, SUBJECTS: SUBJECTS };
+      return { CATS: CATS, CAT_ORDER: GAZETTE_CAT_ORDER, SCHEDULE: SCHEDULE, LAUNCH_DAY: LAUNCH_DAY, SUBJECTS: SUBJECTS, LEAF_TO_SUBJECT: LEAF_TO_SUBJECT };
     });
 }
 

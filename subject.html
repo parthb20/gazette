@@ -15,12 +15,9 @@
   <header class="site">
     <a class="brand-link" href="index.html"><h1 class="display brand-logo">Gazette</h1></a>
     <div class="header-actions">
-      <button class="icon-btn" id="themeToggle" title="Toggle dark mode"><span class="ico">&#127769;</span><span class="lbl" id="themeLabel">Dark</span></button>
-      <button class="icon-btn" id="feedbackBtn" title="Feedback"><span class="ico">&#128221;</span><span class="lbl">Feedback</span></button>
-      <button class="streak-pill" id="streakBtn">
-        <span class="flame">&#9679;</span>
-        <span>Streak <b id="streakVal">0</b></span>
-      </button>
+      <button class="icon-btn" id="themeToggle" title="Toggle dark mode"><span class="ico">&#127769;</span></button>
+      <button class="icon-btn" id="feedbackBtn" title="Feedback"><span class="ico">&#128221;</span></button>
+      <button class="streak-pill" id="streakBtn" title="Streak"><span class="flame">&#9679;</span><b id="streakVal">0</b></button>
     </div>
   </header>
 
@@ -108,7 +105,7 @@
       a.innerHTML = '<span class="icon">'+c.icon+'</span>' +
         '<button class="icon-btn" style="width:26px;height:26px;font-size:12px;position:absolute;top:16px;right:16px;" data-info-key="'+lk+'" title="See an example">i</button>' +
         '<span class="name">'+c.label+'</span>' +
-        '<span class="meta">'+c.hint+' - '+c.desc+'</span>' +
+        '<span class="meta">'+c.hint+'</span>' +
         statusHtml;
       grid.appendChild(a);
       a.querySelector('[data-info-key]').addEventListener('click', function(e){
@@ -122,6 +119,7 @@
       modal.id = 'example_' + lk;
       modal.innerHTML = '<div class="modal-box"><button class="modal-close" data-close-modal="example_'+lk+'">&times;</button>' +
         '<h3>'+c.label+'</h3><p>'+c.desc+'</p>' +
+        '<p style="font-size:12.5px;color:var(--ink-muted);">10 guesses and 5 letter-reveal hints per puzzle. Typos and common alternate names are usually recognised.</p>' +
         '<div class="modal-example-name" id="exTiles_'+lk+'Name"></div>' +
         '<div id="exTiles_'+lk+'"></div></div>';
       exampleModals.appendChild(modal);

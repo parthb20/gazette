@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- paper page -->
+  <path d="M12 6 H44 L52 14 V58 H12 Z" fill="#F6F4EE" stroke="#1C2B45" stroke-width="3" stroke-linejoin="round"/>
+  <!-- folded corner -->
+  <path d="M44 6 V14 H52 Z" fill="#D8D2C2" stroke="#1C2B45" stroke-width="3" stroke-linejoin="round"/>
+  <!-- masthead bar -->
+  <rect x="18" y="22" width="28" height="6" rx="1" fill="#8C3B34"/>
+  <!-- body text lines -->
+  <rect x="18" y="34" width="28" height="4" rx="1" fill="#1C2B45"/>
+  <rect x="18" y="42" width="20" height="4" rx="1" fill="#1C2B45"/>
+  <rect x="18" y="50" width="24" height="4" rx="1" fill="#1C2B45"/>
+</svg>

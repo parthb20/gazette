@@ -1,109 +1,254 @@
-/* CATS, CAT_ORDER, SCHEDULE, LAUNCH_DAY are filled in once
-   data-loader.js finishes fetching and parsing the Excel file. */
-var CATS, CAT_ORDER, SCHEDULE, LAUNCH_DAY;
+const MAX_GUESSES = 10;
+const MAX_HINTS = 5;
 
-const DAY = Math.floor(Date.now() / 86400000);
-
-function targetFor(key){
-  const schedule = SCHEDULE[key];
-  const pool = CATS[key].pool;
-  const dayIndex = DAY - LAUNCH_DAY;
-  const idx = ((dayIndex % schedule.length) + schedule.length) % schedule.length;
-  const name = schedule[idx];
-  return pool.find(function(s){ return s.name === name; });
+function parseThemeColor(varName){
+  const v = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  const hex = v.replace('#','');
+  return [0,2,4].map(function(i){ return parseInt(hex.substr(i,2),16); });
+}
+function lerpColor(c1, c2, t){
+  return [0,1,2].map(function(i){ return Math.round(c1[i] + (c2[i]-c1[i]) * t); });
+}
+/* Single source of truth for tile color, used for EVERY field type.
+   t=0 -> pure green (exact), t=0.5 -> pure amber (close), t=1 -> pure red (way off).
+   Same formula in light and dark mode - colors just come from different theme vars. */
+function gradientStyleForT(t){
+  t = Math.max(0, Math.min(1, t));
+  const green = parseThemeColor('--stamp-green'), amber = parseThemeColor('--stamp-amber'), red = parseThemeColor('--stamp-red');
+  const greenBg = parseThemeColor('--stamp-green-bg'), amberBg = parseThemeColor('--stamp-amber-bg'), redBg = parseThemeColor('--stamp-red-bg');
+  let fg, bg;
+  if(t <= 0.5){
+    const s = t / 0.5;
+    fg = lerpColor(green, amber, s); bg = lerpColor(greenBg, amberBg, s);
+  } else {
+    const s = (t - 0.5) / 0.5;
+    fg = lerpColor(amber, red, s); bg = lerpColor(amberBg, redBg, s);
+  }
+  return 'background:rgb('+bg.join(',')+');color:rgb('+fg.join(',')+');border-color:rgb('+fg.join(',')+');';
+}
+function tileT(f, gv, tv){
+  if(gv === tv) return 0;
+  if(f.t === 'n'){
+    const relDist = Math.abs(gv - tv) / Math.max(Math.abs(tv), 1);
+    return Math.min(1, relDist / 0.6);
+  }
+  return (f.g && f.g[gv] === f.g[tv]) ? 0.5 : 1;
+}
+function formatYear(v){
+  return v < 0 ? (Math.abs(v) + ' BCE') : (v + ' CE');
 }
 
-const SKEY = 'gazette_state_v1';
-function loadState(){
-  try{ return JSON.parse(localStorage.getItem(SKEY)) || {}; }catch(e){ return {}; }
-}
-function saveState(s){ localStorage.setItem(SKEY, JSON.stringify(s)); }
-let state = loadState();
-if(!state.day || state.day !== DAY){
-  state = { day: DAY, streak: state.streak || 0, lastWinDay: state.lastWinDay || null, progress: {} };
-  saveState(state);
-}
-function catState(key){
-  if(!state.progress[key]) state.progress[key] = { guesses: [], done:false, won:false, hintsUsed:0 };
-  if(state.progress[key].hintsUsed === undefined) state.progress[key].hintsUsed = 0;
-  return state.progress[key];
-}
-function tileClass(f, gv, tv){
-  if(gv === tv) return 'hit';
-  if(f.t === 'c' && f.g[gv] === f.g[tv]) return 'near';
-  return 'miss';
-}
-function renderStreakBadge(){
-  const el = document.getElementById('streakVal');
-  if(el) el.textContent = state.streak;
-}
-
-/* ---------------- theme ---------------- */
-function applyTheme(t){
-  document.documentElement.setAttribute('data-theme', t);
-  localStorage.setItem('gazette_theme', t);
-  const btn = document.getElementById('themeToggle');
-  if(btn){
-    const ico = btn.querySelector('.ico');
-    const lbl = btn.querySelector('.lbl');
-    if(ico) ico.innerHTML = t === 'dark' ? '&#9788;' : '&#127769;';
-    if(lbl) lbl.textContent = t === 'dark' ? 'Light' : 'Dark';
+function renderExampleTiles(c, containerId){
+  const target = c.pool[0];
+  const html = c.fields.map(function(f){
+    const v = target[f.k];
+    const displayVal = f.isYear ? formatYear(v) : v;
+    return '<div class="stamp" style="'+gradientStyleForT(0)+'"><div class="val">'+displayVal+'</div><div class="lab">'+f.l+'</div></div>';
+  }).join('');
+  const el = document.getElementById(containerId);
+  if(el){
+    el.innerHTML = '<div class="tiles">'+html+'</div>';
+    const nameEl = document.getElementById(containerId + 'Name');
+    if(nameEl) nameEl.textContent = target.name;
   }
 }
-function initTheme(){
-  applyTheme(localStorage.getItem('gazette_theme') || 'light');
-}
-initTheme();
 
-/* ---------------- modals ---------------- */
-function openModal(id){
-  const m = document.getElementById(id);
-  if(m) m.classList.add('open');
-}
-function closeModal(id){
-  const m = document.getElementById(id);
-  if(m) m.classList.remove('open');
-}
+function initGame(key){
+  const c = CATS[key];
+  const cs = catState(key);
+  const target = targetFor(key);
+  track('puzzle_opened', { category:key });
 
-/* ---------------- shared header wiring (theme / guide / feedback / streak) ---------------- */
-function wireHeader(){
-  const themeBtn = document.getElementById('themeToggle');
-  if(themeBtn) themeBtn.addEventListener('click', function(){
-    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  document.getElementById('gameCatName').textContent = c.label;
+  document.getElementById('gameDesc').textContent = c.desc;
+  document.getElementById('gnum').textContent = 0;
+  document.getElementById('maxGuesses').textContent = MAX_GUESSES;
+  renderExampleTiles(c, 'exampleTiles');
+
+  const input = document.getElementById('guessInput');
+  const suggestBox = document.getElementById('suggestBox');
+  const rows = document.getElementById('rows');
+  const resultCard = document.getElementById('resultCard');
+  const emailBox = document.getElementById('signupBox');
+  input.placeholder = 'Type your guess...';
+
+  if(isSignedUp() && emailBox) emailBox.style.display = 'none';
+
+  function renderRow(guessName, num){
+    const guessObj = c.pool.find(function(s){ return s.name === guessName; });
+    const row = document.createElement('div');
+    row.className = 'guess-row';
+    const tilesHtml = c.fields.map(function(f){
+      const gv = guessObj[f.k], tv = target[f.k];
+      const t = tileT(f, gv, tv);
+      const displayGv = f.isYear ? formatYear(gv) : gv;
+      let val = displayGv;
+      if(f.t === 'n' && gv !== tv){
+        val = displayGv + ' ' + (gv < tv ? '&#8593;' : '&#8595;');
+      }
+      return '<div class="stamp" style="'+gradientStyleForT(t)+'"><div class="val">'+val+'</div><div class="lab">'+f.l+'</div></div>';
+    }).join('');
+    row.innerHTML = '<div class="glabel"><span class="num">'+num+'</span>'+guessName+'</div><div class="tiles">'+tilesHtml+'</div>';
+    rows.insertBefore(row, rows.firstChild); // latest guess on top
+  }
+
+  function renderAnswerReveal(){
+    const html = c.fields.map(function(f){
+      const v = target[f.k];
+      const displayVal = f.isYear ? formatYear(v) : v;
+      return '<div class="stamp" style="'+gradientStyleForT(0)+'"><div class="val">'+displayVal+'</div><div class="lab">'+f.l+'</div></div>';
+    }).join('');
+    return '<div class="tiles">'+html+'</div>';
+  }
+
+  function finishUI(won){
+    input.disabled = true;
+    if(hintBtn) hintBtn.disabled = true;
+    resultCard.style.display = 'block';
+    resultCard.classList.toggle('lost', !won);
+    resultCard.classList.toggle('won', won);
+    const answerEl = document.getElementById('resultAnswer');
+    if(won){
+      document.getElementById('resultTitle').textContent = 'Solved in ' + cs.guesses.length + (cs.guesses.length>1 ? ' guesses' : ' guess');
+      document.getElementById('resultBody').textContent = 'Today\u2019s ' + c.label.toLowerCase().replace(/s$/,'') + ' was:';
+    } else {
+      document.getElementById('resultTitle').textContent = 'So close! Here\u2019s today\u2019s answer';
+      document.getElementById('resultBody').textContent = 'Today\u2019s ' + c.label.toLowerCase().replace(/s$/,'') + ' was:';
+    }
+    if(answerEl) answerEl.textContent = target.name;
+    document.getElementById('resultStats').innerHTML = renderAnswerReveal();
+    resultCard.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  function registerWinForStreak(){
+    if(state.lastWinDay === DAY) return;
+    state.streak = (state.lastWinDay === DAY - 1) ? state.streak + 1 : 1;
+    state.lastWinDay = DAY;
+    renderStreakBadge();
+  }
+
+  function submitGuess(name){
+    if(cs.done) return;
+    cs.guesses.push(name);
+    renderRow(name, cs.guesses.length);
+    document.getElementById('gnum').textContent = Math.min(cs.guesses.length, MAX_GUESSES);
+
+    const correct = name === target.name;
+    track('guess_submitted', { category:key, guess_number: cs.guesses.length, correct: correct });
+
+    if(correct){
+      cs.done = true; cs.won = true;
+      registerWinForStreak();
+      finishUI(true);
+      track('puzzle_solved', { category:key, guesses: cs.guesses.length });
+    } else if(cs.guesses.length >= MAX_GUESSES){
+      cs.done = true; cs.won = false;
+      finishUI(false);
+      track('puzzle_failed', { category:key });
+    }
+    saveState(state);
+  }
+
+  const hintBtn = document.getElementById('hintBtn');
+  function renderHint(){
+    const revealed = cs.hintsUsed;
+    document.getElementById('hintDisplay').textContent = target.name.slice(0, revealed) + '\u2026';
+    document.getElementById('hintProgress').textContent = revealed + '/' + MAX_HINTS;
+    document.getElementById('hintCount').textContent = (MAX_HINTS - revealed);
+    if(revealed >= MAX_HINTS || cs.done) hintBtn.disabled = true;
+  }
+  if(hintBtn){
+    hintBtn.addEventListener('click', function(){
+      if(cs.hintsUsed >= MAX_HINTS || cs.done) return;
+      cs.hintsUsed++;
+      saveState(state);
+      track('hint_used', { category:key, hints_used: cs.hintsUsed });
+      document.getElementById('hintBox').style.display = 'block';
+      renderHint();
+    });
+    if(cs.hintsUsed > 0){ document.getElementById('hintBox').style.display = 'block'; renderHint(); }
+  }
+
+  input.addEventListener('input', function(){
+    const q = input.value.trim().toLowerCase();
+    suggestBox.innerHTML = '';
+    if(!q){ suggestBox.style.display = 'none'; return; }
+    const already = new Set(cs.guesses);
+    const matches = c.pool.filter(function(s){ return fuzzyMatchesQuery(s, q) && !already.has(s.name); }).slice(0,6);
+    if(!matches.length){ suggestBox.style.display = 'none'; return; }
+    matches.forEach(function(m){
+      const opt = document.createElement('div');
+      opt.className = 'opt';
+      opt.textContent = m.name;
+      opt.addEventListener('click', function(){ submitGuess(m.name); suggestBox.style.display='none'; input.value=''; });
+      suggestBox.appendChild(opt);
+    });
+    suggestBox.style.display = 'block';
+  });
+  document.addEventListener('click', function(e){
+    if(!e.target.closest('.search-wrap')) suggestBox.style.display = 'none';
   });
 
-  const backBtn = document.getElementById('backBtn');
-  if(backBtn) backBtn.addEventListener('click', function(){
-    if(window.history.length > 1) window.history.back();
-    else window.location.href = 'index.html';
+  function buildShareText(){
+    const siteUrl = window.location.href.split('?')[0].split('#')[0];
+    if(cs.won){
+      return `I just solved today's Gazette (${c.label}) in ${cs.guesses.length} guess${cs.guesses.length>1?'es':''}! Can you beat me?\n${siteUrl}`;
+    }
+    return `Today's Gazette (${c.label}) puzzle got me! Think you can solve it?\n${siteUrl}`;
+  }
+
+  document.getElementById('shareBtn').addEventListener('click', function(){
+    const grid = buildShareText();
+    track('share_copied', { category:key });
+
+    function showFallback(){
+      const box = document.getElementById('shareFallback');
+      const ta = document.getElementById('shareFallbackText');
+      ta.value = grid; box.style.display = 'block'; ta.focus(); ta.select();
+    }
+    function legacyCopy(){
+      const ta = document.createElement('textarea');
+      ta.value = grid; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      let ok = false;
+      try{ ok = document.execCommand('copy'); }catch(e){ ok = false; }
+      document.body.removeChild(ta);
+      return ok;
+    }
+    const btn = document.getElementById('shareBtn');
+    const old = btn.innerHTML;
+    function copiedFeedback(){ btn.innerHTML = 'Copied'; setTimeout(function(){ btn.innerHTML = old; }, 1500); }
+
+    if(navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(grid).then(copiedFeedback).catch(function(){ if(legacyCopy()) copiedFeedback(); else showFallback(); });
+    } else if(legacyCopy()){ copiedFeedback(); } else { showFallback(); }
   });
 
-  const feedbackBtn = document.getElementById('feedbackBtn');
-  if(feedbackBtn) feedbackBtn.addEventListener('click', function(){ openModal('feedbackModal'); track('feedback_opened'); });
+  const nativeShareBtn = document.getElementById('nativeShareBtn');
+  if(nativeShareBtn){
+    if(navigator.share){
+      nativeShareBtn.addEventListener('click', function(){
+        track('native_share', { category:key });
+        navigator.share({ text: buildShareText() }).catch(function(){});
+      });
+    } else {
+      nativeShareBtn.style.display = 'none';
+    }
+  }
 
-  const streakBtn = document.getElementById('streakBtn');
-  if(streakBtn) streakBtn.addEventListener('click', function(){
-    const signedIn = isSignedUp();
-    document.getElementById('streakModalCount').textContent = state.streak;
-    document.getElementById('streakModalSignedOut').style.display = signedIn ? 'none' : 'block';
-    document.getElementById('streakModalSignedIn').style.display = signedIn ? 'block' : 'none';
-    openModal('streakModal');
-    track('streak_badge_clicked', { signed_up: signedIn });
-  });
+  const emailBtn = document.getElementById('emailBtn');
+  if(emailBtn){
+    emailBtn.addEventListener('click', function(){
+      const val = document.getElementById('emailInput').value.trim();
+      if(!val || !val.includes('@')) return;
+      captureEmail(val);
+      emailBox.innerHTML = '<p>You\u2019re in. Tomorrow\u2019s puzzle will follow this streak.</p>';
+    });
+  }
 
-  document.querySelectorAll('[data-close-modal]').forEach(function(btn){
-    btn.addEventListener('click', function(){ closeModal(btn.getAttribute('data-close-modal')); });
-  });
-  document.querySelectorAll('.modal-overlay').forEach(function(ov){
-    ov.addEventListener('click', function(e){ if(e.target === ov) ov.classList.remove('open'); });
-  });
-
-  const googleBtn = document.getElementById('googleSignInBtn');
-  if(googleBtn) googleBtn.addEventListener('click', function(){
-    track('google_signin_clicked');
-    alert('Google sign-in isn\u2019t wired up yet. This is a placeholder for now.');
-  });
+  cs.guesses.forEach(function(gName, i){ renderRow(gName, i+1); });
+  document.getElementById('gnum').textContent = Math.min(cs.guesses.length, MAX_GUESSES);
+  if(cs.done) finishUI(cs.won);
 
   renderStreakBadge();
 }
-document.addEventListener('DOMContentLoaded', wireHeader);

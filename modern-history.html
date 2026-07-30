@@ -18,7 +18,7 @@
       <button class="icon-btn" id="themeToggle" title="Toggle dark mode"><span class="ico">&#127769;</span></button>
       <button class="icon-btn" id="feedbackBtn" title="Feedback"><span class="ico">&#128221;</span></button>
       <button class="streak-pill" id="streakBtn" title="Streak">
-        <span class="flame">&#9679;</span><b id="streakVal">0</b>
+        <span class="flame">&#128293;</span><b id="streakVal">0</b>
       </button>
     </div>
   </header>
@@ -32,7 +32,7 @@
   <div id="gameBody" style="display:none;">
     <div class="game-head">
       <div class="game-head-left">
-        <button class="back-icon-btn" id="backBtn" title="Go back"><span>&#8592;</span><span id="backLabel"></span></button>
+        <button class="back-icon-btn" id="backBtn" title="Go back">&#8592;</button>
         <h2 id="gameCatName"></h2>
         <button class="icon-btn" id="exampleBtn" style="width:30px;height:30px;font-size:12px;" title="Rules & example">i</button>
       </div>
@@ -67,9 +67,12 @@
     </div>
 
     <div class="legend">
-      <span class="glabel">EXACT</span>
-      <div class="gbar"></div>
-      <span class="glabel">WAY OFF</span>
+      <div class="grow">
+        <span class="glabel">EXACT</span>
+        <div class="gbar"></div>
+        <span class="glabel">WAY OFF</span>
+      </div>
+      <div class="gcaption">Green = exact, red = way off. Each tile's shade shows how close your guess is.</div>
     </div>
 
     <div class="hint-box" id="hintBox" style="display:none;">
@@ -137,8 +140,6 @@
 
     const subjKey = data.LEAF_TO_SUBJECT['history'];
     const subj = data.SUBJECTS[subjKey];
-    const backLabel = document.getElementById('backLabel');
-    if(subj) backLabel.textContent = subj.label;
     document.getElementById('backBtn').addEventListener('click', function(){
       if(window.history.length > 1) window.history.back();
       else window.location.href = 'index.html';

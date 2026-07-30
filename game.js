@@ -26,7 +26,7 @@ function gradientStyleForT(t){
   const hue = hueForT(t);
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const fg = isDark ? hslToRgb(hue, 72, 72) : hslToRgb(hue, 58, 32);
-  const bg = isDark ? hslToRgb(hue, 40, 20) : hslToRgb(hue, 45, 92);
+  const bg = isDark ? hslToRgb(hue, 40, 20) : hslToRgb(hue, 38, 95);
   return 'background:rgb('+bg.join(',')+');color:rgb('+fg.join(',')+');border-color:rgb('+fg.join(',')+');';
 }
 function tileT(f, gv, tv){
@@ -43,6 +43,17 @@ function formatYear(v){
 function tickBadge(isExact){
   return isExact ? '<span class="tick"></span>' : '';
 }
+function paintGradientBars(){
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const stopAt = function(t){
+    const rgb = isDark ? hslToRgb(hueForT(t), 72, 72) : hslToRgb(hueForT(t), 58, 32);
+    return 'rgb('+rgb.join(',')+')';
+  };
+  document.querySelectorAll('.gbar').forEach(function(bar){
+    bar.style.background = 'linear-gradient(90deg, '+stopAt(0)+', '+stopAt(0.5)+', '+stopAt(1)+')';
+  });
+}
+window.repaintGradientBars = paintGradientBars;
 
 function renderExampleTiles(c, containerId){
   const target = c.pool[0];
@@ -257,4 +268,5 @@ function initGame(key){
   if(cs.done) finishUI(cs.won);
 
   renderStreakBadge();
+  paintGradientBars();
 }

@@ -46,7 +46,7 @@ function applyTheme(t){
   if(btn){
     const ico = btn.querySelector('.ico');
     const lbl = btn.querySelector('.lbl');
-    if(ico) ico.innerHTML = t === 'dark' ? '&#9788;' : '&#127769;';
+    if(ico) ico.innerHTML = t === 'dark' ? '&#127774;' : '&#127769;';
     if(lbl) lbl.textContent = t === 'dark' ? 'Light' : 'Dark';
   }
 }

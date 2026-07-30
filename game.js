@@ -60,7 +60,7 @@ function initGame(key){
   track('puzzle_opened', { category:key });
 
   document.getElementById('gameCatName').textContent = c.label;
-  document.getElementById('gameDesc').textContent = c.desc;
+  document.getElementById('gameDesc').textContent = c.hint + '.';
   document.getElementById('gnum').textContent = 0;
   document.getElementById('maxGuesses').textContent = MAX_GUESSES;
   renderExampleTiles(c, 'exampleTiles');

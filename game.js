@@ -1,29 +1,32 @@
 const MAX_GUESSES = 10;
 const MAX_HINTS = 5;
 
-function parseThemeColor(varName){
-  const v = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-  const hex = v.replace('#','');
-  return [0,2,4].map(function(i){ return parseInt(hex.substr(i,2),16); });
+function hslToRgb(h, s, l){
+  s/=100; l/=100;
+  const c = (1-Math.abs(2*l-1))*s;
+  const x = c*(1-Math.abs((h/60)%2-1));
+  const m = l-c/2;
+  let r,g,b;
+  if(h<60){r=c;g=x;b=0;} else if(h<120){r=x;g=c;b=0;} else if(h<180){r=0;g=c;b=x;}
+  else if(h<240){r=0;g=x;b=c;} else if(h<300){r=x;g=0;b=c;} else {r=c;g=0;b=x;}
+  return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
 }
-function lerpColor(c1, c2, t){
-  return [0,1,2].map(function(i){ return Math.round(c1[i] + (c2[i]-c1[i]) * t); });
+function hueForT(t){
+  // green (120deg) -> amber (38deg) -> red (4deg), staying vivid the whole way
+  if(t <= 0.5) return 120 + (38-120) * (t/0.5);
+  return 38 + (4-38) * ((t-0.5)/0.5);
 }
 /* Single source of truth for tile color, used for EVERY field type.
-   t=0 -> pure green (exact), t=0.5 -> pure amber (close), t=1 -> pure red (way off).
-   Same formula in light and dark mode - colors just come from different theme vars. */
+   t=0 -> exact, t=0.5 -> close, t=1 -> way off.
+   Light and dark mode are tuned separately on purpose, not just inverted -
+   light mode needs darker, more saturated text on pale backgrounds;
+   dark mode needs lighter text on deeper backgrounds. */
 function gradientStyleForT(t){
   t = Math.max(0, Math.min(1, t));
-  const green = parseThemeColor('--stamp-green'), amber = parseThemeColor('--stamp-amber'), red = parseThemeColor('--stamp-red');
-  const greenBg = parseThemeColor('--stamp-green-bg'), amberBg = parseThemeColor('--stamp-amber-bg'), redBg = parseThemeColor('--stamp-red-bg');
-  let fg, bg;
-  if(t <= 0.5){
-    const s = t / 0.5;
-    fg = lerpColor(green, amber, s); bg = lerpColor(greenBg, amberBg, s);
-  } else {
-    const s = (t - 0.5) / 0.5;
-    fg = lerpColor(amber, red, s); bg = lerpColor(amberBg, redBg, s);
-  }
+  const hue = hueForT(t);
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const fg = isDark ? hslToRgb(hue, 72, 72) : hslToRgb(hue, 58, 32);
+  const bg = isDark ? hslToRgb(hue, 40, 20) : hslToRgb(hue, 45, 92);
   return 'background:rgb('+bg.join(',')+');color:rgb('+fg.join(',')+');border-color:rgb('+fg.join(',')+');';
 }
 function tileT(f, gv, tv){
@@ -37,13 +40,16 @@ function tileT(f, gv, tv){
 function formatYear(v){
   return v < 0 ? (Math.abs(v) + ' BCE') : (v + ' CE');
 }
+function tickBadge(isExact){
+  return isExact ? '<span class="tick"></span>' : '';
+}
 
 function renderExampleTiles(c, containerId){
   const target = c.pool[0];
   const html = c.fields.map(function(f){
     const v = target[f.k];
     const displayVal = f.isYear ? formatYear(v) : v;
-    return '<div class="stamp" style="'+gradientStyleForT(0)+'"><div class="val">'+displayVal+'</div><div class="lab">'+f.l+'</div></div>';
+    return '<div class="stamp" style="'+gradientStyleForT(0)+'">'+tickBadge(true)+'<div class="val">'+displayVal+'</div><div class="lab">'+f.l+'</div></div>';
   }).join('');
   const el = document.getElementById(containerId);
   if(el){
@@ -86,7 +92,7 @@ function initGame(key){
       if(f.t === 'n' && gv !== tv){
         val = displayGv + ' ' + (gv < tv ? '&#8593;' : '&#8595;');
       }
-      return '<div class="stamp" style="'+gradientStyleForT(t)+'"><div class="val">'+val+'</div><div class="lab">'+f.l+'</div></div>';
+      return '<div class="stamp" style="'+gradientStyleForT(t)+'">'+tickBadge(t===0)+'<div class="val">'+val+'</div><div class="lab">'+f.l+'</div></div>';
     }).join('');
     row.innerHTML = '<div class="glabel"><span class="num">'+num+'</span>'+guessName+'</div><div class="tiles">'+tilesHtml+'</div>';
     rows.insertBefore(row, rows.firstChild); // latest guess on top
@@ -96,7 +102,7 @@ function initGame(key){
     const html = c.fields.map(function(f){
       const v = target[f.k];
       const displayVal = f.isYear ? formatYear(v) : v;
-      return '<div class="stamp" style="'+gradientStyleForT(0)+'"><div class="val">'+displayVal+'</div><div class="lab">'+f.l+'</div></div>';
+      return '<div class="stamp" style="'+gradientStyleForT(0)+'">'+tickBadge(true)+'<div class="val">'+displayVal+'</div><div class="lab">'+f.l+'</div></div>';
     }).join('');
     return '<div class="tiles">'+html+'</div>';
   }

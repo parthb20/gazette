@@ -49,6 +49,7 @@ function applyTheme(t){
     if(ico) ico.innerHTML = t === 'dark' ? '&#127774;' : '&#127769;';
     if(lbl) lbl.textContent = t === 'dark' ? 'Light' : 'Dark';
   }
+  if(window.repaintGradientBars) window.repaintGradientBars();
 }
 function initTheme(){
   applyTheme(localStorage.getItem('gazette_theme') || 'light');

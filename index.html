@@ -50,6 +50,17 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="introModal">
+    <div class="modal-box">
+      <button class="modal-close" data-close-modal="introModal">&times;</button>
+      <h3>How Gazette works</h3>
+      <p><b>1. Pick a topic.</b> Rivers, schemes, history - whatever you want to test yourself on.</p>
+      <p><b>2. Type any guess.</b> There's no question waiting - just type any real answer to get started (e.g. any river name for the rivers topic).</p>
+      <p><b>3. Read the colours.</b> Each clue turns green if you're exactly right, and shades toward red the further off you are. Use that to guess again.</p>
+      <p style="margin:0;">You get 10 guesses and 5 hints per puzzle, every day.</p>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="streakModal">
     <div class="modal-box">
       <button class="modal-close" data-close-modal="streakModal">&times;</button>
@@ -71,10 +82,17 @@
 <script src="analytics.js"></script>
 <script>
   track('home_view');
+  if(!localStorage.getItem('gazette_seen_intro')){
+    document.addEventListener('DOMContentLoaded', function(){
+      openModal('introModal');
+      localStorage.setItem('gazette_seen_intro', '1');
+      track('intro_auto_shown');
+    });
+  }
   const LEAF_PAGES = {
     scheme:'scheme.html', biodiversity:'biodiversity.html', indices:'indices.html', amendments:'amendments.html',
     history:'modern-history.html', ancient_history:'ancient-history.html', medieval_history:'medieval-history.html',
-    rivers:'rivers.html', mountains:'mountains.html'
+    rivers:'rivers.html', mountains:'mountains.html', committees:'committees.html'
   };
   const SUBJECT_ORDER = ['history','geography','polity','economy','environment','current_affairs'];
 

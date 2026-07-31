@@ -34,6 +34,8 @@ const META = {
                   hint: 'Guess the Indian river', noun: 'river', desc: 'Guess an Indian river from clues about its length, where it originates, and which sea it flows into.' },
   mountains:    { label: 'Mountains & peaks',         icon: '&#9968;',   example: 'Kangchenjunga',
                   hint: 'Guess the mountain peak or range', noun: 'peak', desc: 'Guess an Indian mountain peak from clues about its height, range, and state.' },
+  committees:   { label: 'Committees & Commissions',  icon: '&#128203;', example: 'Sarkaria Commission',
+                  hint: 'Guess the committee or commission', noun: 'committee', desc: 'Guess a government committee or commission from clues about when it was formed, who chaired it, and its purpose.' },
 };
 
 const SUBJECTS = {
@@ -42,14 +44,14 @@ const SUBJECTS = {
   polity:      { label: 'Polity',                icon: '&#9878;',   leaves: ['amendments'] },
   economy:     { label: 'Economy',               icon: '&#127970;', leaves: ['scheme'] },
   environment: { label: 'Environment & Ecology', icon: '&#127795;', leaves: ['biodiversity'] },
-  current_affairs: { label: 'Current Affairs',   icon: '&#127760;', leaves: ['indices'] },
+  current_affairs: { label: 'Current Affairs',   icon: '&#127760;', leaves: ['indices','committees'] },
 };
 
 const LEAF_TO_SUBJECT = {};
 Object.keys(SUBJECTS).forEach(function(sk){ SUBJECTS[sk].leaves.forEach(function(lk){ LEAF_TO_SUBJECT[lk] = sk; }); });
 
 const TAB_PREFIX = { scheme:'Schemes', biodiversity:'Biodiversity', indices:'Indices', amendments:'Amendments', history:'History',
-  ancient_history:'AncientHistory', medieval_history:'MedievalHistory', rivers:'Rivers', mountains:'Mountains' };
+  ancient_history:'AncientHistory', medieval_history:'MedievalHistory', rivers:'Rivers', mountains:'Mountains', committees:'Committees' };
 
 // [excel_column, js_key, display_label, 'n' or 'c']
 const FIELD_MAPS = {
@@ -109,9 +111,14 @@ const FIELD_MAPS = {
     ['range','range','Range','c'],
     ['state','state','State','c'],
   ],
+  committees: [
+    ['year_formed','year','Year formed','n'],
+    ['chairperson','chair','Chairperson','c'],
+    ['purpose','purpose','Purpose','c'],
+  ],
 };
 
-const GAZETTE_CAT_ORDER = ['scheme','biodiversity','indices','amendments','history','ancient_history','medieval_history','rivers','mountains'];
+const GAZETTE_CAT_ORDER = ['scheme','biodiversity','indices','amendments','history','ancient_history','medieval_history','rivers','mountains','committees'];
 
 /* Deterministic seeded shuffle — same seed always produces the same
    order, so every visitor's browser computes the identical daily

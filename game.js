@@ -53,14 +53,20 @@ function paintGradientBars(){
     bar.style.background = 'linear-gradient(90deg, '+stopAt(0)+', '+stopAt(0.5)+', '+stopAt(1)+')';
   });
 }
-window.repaintGradientBars = paintGradientBars;
+function repaintAllTiles(){
+  document.querySelectorAll('.stamp[data-t]').forEach(function(el){
+    const t = parseFloat(el.getAttribute('data-t'));
+    el.setAttribute('style', gradientStyleForT(t));
+  });
+}
+window.repaintGradientBars = function(){ paintGradientBars(); repaintAllTiles(); };
 
 function renderExampleTiles(c, containerId){
   const target = c.pool[0];
   const html = c.fields.map(function(f){
     const v = target[f.k];
     const displayVal = f.isYear ? formatYear(v) : v;
-    return '<div class="stamp" style="'+gradientStyleForT(0)+'">'+tickBadge(true)+'<div class="val">'+displayVal+'</div><div class="lab">'+f.l+'</div></div>';
+    return '<div class="stamp" data-t="0" style="'+gradientStyleForT(0)+'">'+tickBadge(true)+'<div class="val">'+displayVal+'</div><div class="lab">'+f.l+'</div></div>';
   }).join('');
   const el = document.getElementById(containerId);
   if(el){
@@ -77,7 +83,7 @@ function initGame(key){
   track('puzzle_opened', { category:key });
 
   document.getElementById('gameCatName').textContent = c.label;
-  document.getElementById('gameDesc').textContent = c.hint + '.';
+  document.getElementById('gameDesc').textContent = 'Type any ' + c.noun + ' below to start - there\u2019s no set question, you\u2019ll see clues after each guess.';
   document.getElementById('gnum').textContent = 0;
   document.getElementById('maxGuesses').textContent = MAX_GUESSES;
   renderExampleTiles(c, 'exampleTiles');
@@ -87,7 +93,7 @@ function initGame(key){
   const rows = document.getElementById('rows');
   const resultCard = document.getElementById('resultCard');
   const emailBox = document.getElementById('signupBox');
-  input.placeholder = 'Type your guess...';
+  input.placeholder = 'Type any ' + c.noun + '...';
 
   if(isSignedUp() && emailBox) emailBox.style.display = 'none';
 
@@ -103,7 +109,7 @@ function initGame(key){
       if(f.t === 'n' && gv !== tv){
         val = displayGv + ' ' + (gv < tv ? '&#8593;' : '&#8595;');
       }
-      return '<div class="stamp" style="'+gradientStyleForT(t)+'">'+tickBadge(t===0)+'<div class="val">'+val+'</div><div class="lab">'+f.l+'</div></div>';
+      return '<div class="stamp" data-t="'+t+'" style="'+gradientStyleForT(t)+'">'+tickBadge(t===0)+'<div class="val">'+val+'</div><div class="lab">'+f.l+'</div></div>';
     }).join('');
     row.innerHTML = '<div class="glabel"><span class="num">'+num+'</span>'+guessName+'</div><div class="tiles">'+tilesHtml+'</div>';
     rows.insertBefore(row, rows.firstChild); // latest guess on top
@@ -113,7 +119,7 @@ function initGame(key){
     const html = c.fields.map(function(f){
       const v = target[f.k];
       const displayVal = f.isYear ? formatYear(v) : v;
-      return '<div class="stamp" style="'+gradientStyleForT(0)+'">'+tickBadge(true)+'<div class="val">'+displayVal+'</div><div class="lab">'+f.l+'</div></div>';
+      return '<div class="stamp" data-t="0" style="'+gradientStyleForT(0)+'">'+tickBadge(true)+'<div class="val">'+displayVal+'</div><div class="lab">'+f.l+'</div></div>';
     }).join('');
     return '<div class="tiles">'+html+'</div>';
   }

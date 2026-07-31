@@ -17,23 +17,23 @@ const DB_URL = 'database/gazette_database.xlsx';
 
 const META = {
   scheme:       { label: 'Government schemes',       icon: '&#127970;', example: 'PM-KUSUM',
-                  hint: 'Guess the government scheme', desc: 'Guess a real central government scheme from clues about when it launched, which ministry runs it, and who it targets.' },
+                  hint: 'Guess the government scheme', noun: 'scheme', desc: 'Guess a real central government scheme from clues about when it launched, which ministry runs it, and who it targets.' },
   biodiversity: { label: 'Protected areas',           icon: '&#127795;', example: 'Kaziranga National Park',
-                  hint: 'Guess the national park or reserve', desc: 'Guess a national park or protected area from clues about its state, size, and famous species.' },
+                  hint: 'Guess the national park or reserve', noun: 'park', desc: 'Guess a national park or protected area from clues about its state, size, and famous species.' },
   indices:      { label: 'Indices & reports',         icon: '&#127760;', example: 'Human Development Index',
-                  hint: 'Guess the global index or report', desc: 'Guess a global index or report from clues about India\u2019s rank, who publishes it, and when it started.' },
+                  hint: 'Guess the global index or report', noun: 'index', desc: 'Guess a global index or report from clues about India\u2019s rank, who publishes it, and when it started.' },
   amendments:   { label: 'Constitutional amendments', icon: '&#9878;',   example: '73rd Amendment: Panchayati Raj',
-                  hint: 'Guess the constitutional amendment', desc: 'Guess a constitutional amendment from clues about its number, year, subject, and the government that passed it.' },
+                  hint: 'Guess the constitutional amendment', noun: 'amendment', desc: 'Guess a constitutional amendment from clues about its number, year, subject, and the government that passed it.' },
   history:      { label: 'Modern history',            icon: '&#127988;', example: 'Champaran Satyagraha',
-                  hint: 'Guess the freedom movement or event', desc: 'Guess a movement or event from the freedom struggle from clues about its year, leader, and region.' },
+                  hint: 'Guess the freedom movement or event', noun: 'movement', desc: 'Guess a movement or event from the freedom struggle from clues about its year, leader, and region.' },
   ancient_history: { label: 'Ancient history',        icon: '&#127961;', example: 'Maurya Empire',
-                  hint: 'Guess the ancient dynasty or era', desc: 'Guess an ancient Indian dynasty or era from clues about when it ruled, its capital region, and what it\u2019s known for.' },
+                  hint: 'Guess the ancient dynasty or era', noun: 'dynasty', desc: 'Guess an ancient Indian dynasty or era from clues about when it ruled, its capital region, and what it\u2019s known for.' },
   medieval_history: { label: 'Medieval history',      icon: '&#127984;', example: 'Mughal Empire',
-                  hint: 'Guess the medieval dynasty or empire', desc: 'Guess a medieval Indian dynasty or empire from clues about when it ruled, its founder, and its capital.' },
+                  hint: 'Guess the medieval dynasty or empire', noun: 'dynasty', desc: 'Guess a medieval Indian dynasty or empire from clues about when it ruled, its founder, and its capital.' },
   rivers:       { label: 'Rivers of India',           icon: '&#127754;', example: 'Ganga',
-                  hint: 'Guess the Indian river', desc: 'Guess an Indian river from clues about its length, where it originates, and which sea it flows into.' },
+                  hint: 'Guess the Indian river', noun: 'river', desc: 'Guess an Indian river from clues about its length, where it originates, and which sea it flows into.' },
   mountains:    { label: 'Mountains & peaks',         icon: '&#9968;',   example: 'Kangchenjunga',
-                  hint: 'Guess the mountain peak or range', desc: 'Guess an Indian mountain peak from clues about its height, range, and state.' },
+                  hint: 'Guess the mountain peak or range', noun: 'peak', desc: 'Guess an Indian mountain peak from clues about its height, range, and state.' },
 };
 
 const SUBJECTS = {
@@ -202,7 +202,7 @@ function loadGazetteData(){
           if(complete) pool.push(item);
         });
 
-        CATS[key] = { label: META[key].label, icon: META[key].icon, example: META[key].example, hint: META[key].hint, desc: META[key].desc, pool: pool, fields: fields };
+        CATS[key] = { label: META[key].label, icon: META[key].icon, example: META[key].example, hint: META[key].hint, noun: META[key].noun, desc: META[key].desc, pool: pool, fields: fields };
         SCHEDULE[key] = seededShuffle(pool.map(function(p){ return p.name; }), 'gazette-' + key);
       });
 

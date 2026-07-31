@@ -1,264 +1,253 @@
-:root{
-  --paper:#F6F4EE;
-  --paper-2:#EFEBE0;
-  --ink:#1C2B45;
-  --ink-soft:#4A5670;
-  --ink-muted:#8992A3;
-  --line:#D8D2C2;
-  --line-strong:#B9B29C;
-  --stamp-red:#8C3B34;
-  --stamp-red-bg:#F3E4E1;
-  --stamp-green:#4F6B3C;
-  --stamp-green-bg:#E7EEDF;
-  --stamp-amber:#B4791E;
-  --stamp-amber-bg:#F6E9D4;
-  --radius:10px;
-  --shadow:rgba(28,43,69,0.08);
-}
-:root[data-theme="dark"]{
-  --paper:#171B26;
-  --paper-2:#1F2534;
-  --ink:#EDEFF4;
-  --ink-soft:#B7BECF;
-  --ink-muted:#7E869C;
-  --line:#2C3345;
-  --line-strong:#3D465C;
-  --stamp-red:#E08A7D;
-  --stamp-red-bg:#4A2C26;
-  --stamp-green:#9BC98C;
-  --stamp-green-bg:#28381F;
-  --stamp-amber:#E8B86D;
-  --stamp-amber-bg:#4A3A1C;
-  --shadow:rgba(0,0,0,0.4);
-}
-*{box-sizing:border-box;}
-html,body{margin:0;padding:0;}
-body{
-  background:var(--paper);color:var(--ink);
-  font-family:'IBM Plex Sans', sans-serif;
-  -webkit-font-smoothing:antialiased;
-}
-.display{font-family:'Source Serif 4', serif;}
-.mono{font-family:'IBM Plex Mono', monospace;}
-a{color:inherit;text-decoration:none;}
-button{font-family:inherit;}
+/* ---------------------------------------------------------------
+   Reads database/gazette_database.xlsx directly in the browser
+   (using the vendored SheetJS library) and builds the same
+   CATS / CAT_ORDER / SCHEDULE / LAUNCH_DAY structures the rest of
+   the site expects. No build step — edit the Excel file, upload it,
+   done. Every visitor's browser parses it fresh on page load.
 
-.wrap{max-width:960px;margin:0 auto;padding:0 20px 30px;}
+   IMPORTANT: fetch() of a local file only works when served over
+   http(s) — via GitHub Pages, or `python3 -m http.server` while
+   testing locally. It will NOT work if you just double-click
+   index.html and open it as a file:// URL — that's a browser
+   security restriction, not a bug in this code.
+------------------------------------------------------------------ */
 
-/* ---------- header ---------- */
-header.site{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:24px 0 16px;border-bottom:1px solid var(--line);
-  margin-bottom:22px;flex-wrap:wrap;gap:14px;
-}
-.brand-link{display:inline-flex;}
-.brand-logo{font-size:42px;font-weight:700;letter-spacing:0.01em;margin:0;}
-.header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.icon-btn{
-  width:38px;height:38px;border-radius:50%;
-  border:1px solid var(--line-strong);background:var(--paper-2);color:var(--ink-soft);
-  font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
-}
-.icon-btn .ico{font-size:17px;line-height:1;}
-#themeToggle .ico{font-size:20px;}
-.icon-btn:hover{border-color:var(--stamp-red);color:var(--stamp-red);}
-.streak-pill{
-  display:flex;align-items:center;gap:6px;cursor:pointer;
-  border:1px solid var(--line-strong);border-radius:999px;
-  padding:0 14px;height:38px;background:var(--paper-2);color:inherit;font-size:14px;font-weight:600;
-}
-.streak-pill:hover{border-color:var(--stamp-red);}
-.streak-pill .flame{color:var(--stamp-red);font-size:16px;}
+const LAUNCH_DATE_STR = '2026-07-23'; // day 1, for the "Roll no." counter
+const DB_URL = 'database/gazette_database.xlsx';
 
-/* ---------- hero (index only) ---------- */
-.hero{margin-bottom:26px;}
-.hero-value{font-size:15px;color:var(--stamp-red);font-weight:600;margin:0 0 8px;}
-.hero-sub{font-size:15px;color:var(--ink-soft);line-height:1.55;margin:0;max-width:640px;}
+const META = {
+  scheme:       { label: 'Government schemes',       icon: '&#127970;', example: 'PM-KUSUM',
+                  hint: 'Guess the government scheme', noun: 'scheme', desc: 'Guess a real central government scheme from clues about when it launched, which ministry runs it, and who it targets.' },
+  biodiversity: { label: 'Protected areas',           icon: '&#127795;', example: 'Kaziranga National Park',
+                  hint: 'Guess the national park or reserve', noun: 'park', desc: 'Guess a national park or protected area from clues about its state, size, and famous species.' },
+  indices:      { label: 'Indices & reports',         icon: '&#127760;', example: 'Human Development Index',
+                  hint: 'Guess the global index or report', noun: 'index', desc: 'Guess a global index or report from clues about India\u2019s rank, who publishes it, and when it started.' },
+  amendments:   { label: 'Constitutional amendments', icon: '&#9878;',   example: '73rd Amendment: Panchayati Raj',
+                  hint: 'Guess the constitutional amendment', noun: 'amendment', desc: 'Guess a constitutional amendment from clues about its number, year, subject, and the government that passed it.' },
+  history:      { label: 'Modern history',            icon: '&#127988;', example: 'Champaran Satyagraha',
+                  hint: 'Guess the freedom movement or event', noun: 'movement', desc: 'Guess a movement or event from the freedom struggle from clues about its year, leader, and region.' },
+  ancient_history: { label: 'Ancient history',        icon: '&#127961;', example: 'Maurya Empire',
+                  hint: 'Guess the ancient dynasty or era', noun: 'dynasty', desc: 'Guess an ancient Indian dynasty or era from clues about when it ruled, its capital region, and what it\u2019s known for.' },
+  medieval_history: { label: 'Medieval history',      icon: '&#127984;', example: 'Mughal Empire',
+                  hint: 'Guess the medieval dynasty or empire', noun: 'dynasty', desc: 'Guess a medieval Indian dynasty or empire from clues about when it ruled, its founder, and its capital.' },
+  rivers:       { label: 'Rivers of India',           icon: '&#127754;', example: 'Ganga',
+                  hint: 'Guess the Indian river', noun: 'river', desc: 'Guess an Indian river from clues about its length, where it originates, and which sea it flows into.' },
+  mountains:    { label: 'Mountains & peaks',         icon: '&#9968;',   example: 'Kangchenjunga',
+                  hint: 'Guess the mountain peak or range', noun: 'peak', desc: 'Guess an Indian mountain peak from clues about its height, range, and state.' },
+};
 
-.cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:8px;}
-.ticket{
-  position:relative;text-align:left;cursor:pointer;
-  background:var(--paper-2);border:1px dashed var(--line-strong);
-  border-radius:var(--radius);padding:20px 18px 18px;
-  display:flex;flex-direction:column;gap:10px;
-  transition:transform .15s ease, border-color .15s ease;
-}
-.ticket:hover{transform:translateY(-2px);border-color:var(--stamp-red);}
-.ticket:focus-visible{outline:2px solid var(--stamp-red);outline-offset:2px;}
-.ticket::before,.ticket::after{
-  content:"";position:absolute;top:50%;transform:translateY(-50%);
-  width:16px;height:16px;background:var(--paper);border-radius:50%;
-}
-.ticket::before{left:-9px;}
-.ticket::after{right:-9px;}
-.ticket .icon{font-size:26px;}
-.ticket .name{font-size:17px;font-weight:600;}
-.ticket .meta{font-size:13px;color:var(--ink-soft);line-height:1.4;}
-.ticket .status{
-  font-size:11px;text-transform:uppercase;letter-spacing:0.06em;
-  font-weight:600;padding:3px 8px;border-radius:4px;align-self:flex-start;
-}
-.status.solved{background:var(--stamp-green-bg);color:var(--stamp-green);}
-.status.played{background:var(--stamp-amber-bg);color:var(--stamp-amber);}
-.status.open{background:var(--paper);color:var(--ink-muted);border:1px solid var(--line);}
+const SUBJECTS = {
+  history:     { label: 'History',              icon: '&#127963;', leaves: ['ancient_history','medieval_history','history'] },
+  geography:   { label: 'Geography',             icon: '&#127757;', leaves: ['rivers','mountains'] },
+  polity:      { label: 'Polity',                icon: '&#9878;',   leaves: ['amendments'] },
+  economy:     { label: 'Economy',               icon: '&#127970;', leaves: ['scheme'] },
+  environment: { label: 'Environment & Ecology', icon: '&#127795;', leaves: ['biodiversity'] },
+  current_affairs: { label: 'Current Affairs',   icon: '&#127760;', leaves: ['indices'] },
+};
 
-/* ---------- game page ---------- */
-.game-head{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;}
-.game-head-left{display:flex;align-items:center;gap:8px;}
-.game-head h2{font-size:20px;margin:0;font-weight:600;}
-.game-head .counter{font-size:13px;color:var(--ink-muted);}
-.game-desc{font-size:14px;color:var(--ink-soft);margin:0 0 10px;line-height:1.5;}
+const LEAF_TO_SUBJECT = {};
+Object.keys(SUBJECTS).forEach(function(sk){ SUBJECTS[sk].leaves.forEach(function(lk){ LEAF_TO_SUBJECT[lk] = sk; }); });
 
-.back-icon-btn{
-  display:inline-flex;align-items:center;gap:6px;flex-shrink:0;
-  padding:0 14px 0 12px;height:34px;border-radius:999px;
-  border:1.5px solid var(--ink);background:var(--paper-2);color:var(--ink);font-weight:600;font-size:13px;
-  cursor:pointer;
-}
-.back-icon-btn:hover{background:var(--ink);color:var(--paper);}
-.hint-toggle-btn{
-  width:38px;height:38px;border-radius:50%;flex-shrink:0;
-  border:1px solid var(--line-strong);background:var(--paper-2);color:var(--ink-soft);
-  font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;position:relative;
-}
-.hint-toggle-btn:hover{border-color:var(--stamp-amber);color:var(--stamp-amber);}
-.hint-toggle-btn:disabled{opacity:0.5;cursor:default;}
-.hint-toggle-btn .badge{
-  position:absolute;top:-4px;right:-4px;background:var(--stamp-amber);color:#fff;
-  font-size:10px;font-weight:700;border-radius:50%;width:16px;height:16px;
-  display:flex;align-items:center;justify-content:center;
-}
+const TAB_PREFIX = { scheme:'Schemes', biodiversity:'Biodiversity', indices:'Indices', amendments:'Amendments', history:'History',
+  ancient_history:'AncientHistory', medieval_history:'MedievalHistory', rivers:'Rivers', mountains:'Mountains' };
 
-/* single gradient-scale legend, replaces the old 3-bullet list */
-.legend{
-  margin-bottom:10px;
-  background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:8px 14px;
-}
-.legend .grow{display:flex;align-items:center;gap:10px;}
-.legend .glabel{font-size:10.5px;color:var(--ink-muted);white-space:nowrap;font-weight:600;}
-.legend .gbar{
-  flex:1;height:6px;border-radius:4px;min-width:60px;
-}
-.legend .gcaption{font-size:10.5px;color:var(--ink-muted);margin-top:4px;}
+// [excel_column, js_key, display_label, 'n' or 'c']
+const FIELD_MAPS = {
+  scheme: [
+    ['year_launched','year','Year launched','n'],
+    ['ministry','ministry','Ministry','c'],
+    ['sector','sector','Sector','c'],
+    ['target_group','tgroup','Target group','c'],
+    ['states_covered','states','States covered','n'],
+    ['budget_cr','budget','Budget (rs cr)','n'],
+  ],
+  biodiversity: [
+    ['year_established','year','Year established','n'],
+    ['state','state','State','c'],
+    ['area_sq_km','area','Area (sq km)','n'],
+    ['famous_species','species','Famous species','c'],
+    ['area_type','ptype','Protected area type','c'],
+  ],
+  indices: [
+    ['india_rank','rank','India rank','n'],
+    ['countries_ranked','total','Total countries ranked','n'],
+    ['year_started','year','Year started','n'],
+    ['publishing_body','body','Publishing body','c'],
+  ],
+  amendments: [
+    ['amendment_number','number','Amendment number','n'],
+    ['year_passed','year','Year passed','n'],
+    ['subject_area','subject','Subject area','c'],
+    ['government_in_power','pm','Government in power','c'],
+  ],
+  history: [
+    ['year','year','Year','n'],
+    ['leader','leader','Leader','c'],
+    ['event_type','type','Event type','c'],
+    ['region','region','Region','c'],
+  ],
+  ancient_history: [
+    ['start_year','year','Start year','n','y'],
+    ['end_year','endYear','End year','n','y'],
+    ['capital_region','region','Capital / region','c'],
+    ['notable_for','notable','Notable for','c'],
+  ],
+  medieval_history: [
+    ['start_year','year','Start year','n','y'],
+    ['end_year','endYear','End year','n','y'],
+    ['founder','founder','Founder','c'],
+    ['capital','capital','Capital','c'],
+  ],
+  rivers: [
+    ['length_km','length','Length (km)','n'],
+    ['origin_state','origin','Origin','c'],
+    ['river_system','system','River system','c'],
+    ['falls_into','sea','Falls into','c'],
+  ],
+  mountains: [
+    ['height_m','height','Height (m)','n'],
+    ['range','range','Range','c'],
+    ['state','state','State','c'],
+  ],
+};
 
-.hint-box{
-  background:var(--paper-2);border:1px solid var(--line-strong);border-radius:8px;
-  padding:8px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;
-}
-.hint-box .hint-progress{font-size:11px;color:var(--ink-muted);white-space:nowrap;}
-.hint-box .mono{font-size:16px;letter-spacing:0.05em;color:var(--ink);font-weight:600;}
+const GAZETTE_CAT_ORDER = ['scheme','biodiversity','indices','amendments','history','ancient_history','medieval_history','rivers','mountains'];
 
-.search-wrap{position:relative;margin-bottom:20px;}
-.search-wrap input{
-  width:100%;padding:13px 16px;font-size:16px;
-  border:1.5px solid var(--ink);border-radius:var(--radius);
-  background:var(--paper);color:var(--ink);
+/* Deterministic seeded shuffle — same seed always produces the same
+   order, so every visitor's browser computes the identical daily
+   rotation independently (critical: nobody's random() can disagree). */
+function xmur3(str){
+  let h = 1779033703 ^ str.length;
+  for(let i = 0; i < str.length; i++){
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return function(){
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    h ^= h >>> 16;
+    return h >>> 0;
+  };
 }
-.search-wrap input:focus{outline:none;border-color:var(--stamp-red);}
-.search-wrap input:disabled{opacity:0.5;}
-.suggestions{
-  display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;
-  background:var(--paper);border:1px solid var(--line-strong);
-  border-radius:var(--radius);overflow:hidden;z-index:20;
-  box-shadow:0 6px 18px var(--shadow);
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
-.suggestions .opt{padding:11px 16px;font-size:14px;cursor:pointer;}
-.suggestions .opt:hover{background:var(--paper-2);}
-.suggestions .opt + .opt{border-top:1px solid var(--line);}
-
-.guess-row{margin-bottom:14px;}
-.guess-row .glabel{font-size:12.5px;color:var(--ink);font-weight:600;margin-bottom:7px;display:flex;align-items:center;gap:8px;}
-.guess-row .glabel .num{
-  display:inline-flex;align-items:center;justify-content:center;
-  width:18px;height:18px;border-radius:50%;background:var(--ink);
-  color:var(--paper);font-size:10.5px;font-weight:600;flex-shrink:0;
-}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;align-items:stretch;}
-.stamp{border-radius:8px;padding:12px 8px;text-align:center;border:1.5px solid transparent;display:flex;flex-direction:column;justify-content:center;min-height:64px;position:relative;}
-.stamp .tick{
-  position:absolute;top:6px;right:6px;width:16px;height:16px;border-radius:50%;
-  background:currentColor;
-}
-.stamp .tick::after{
-  content:'\2713';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  color:var(--paper);font-size:10px;font-weight:900;line-height:1;
-}
-.stamp .val{font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:4px;}
-.stamp .lab{font-size:10px;margin-top:3px;text-transform:uppercase;letter-spacing:0.04em;}
-.stamp.hit{background:var(--stamp-green-bg);color:var(--stamp-green);border-color:#cfe0c1;}
-.stamp.near{background:var(--stamp-amber-bg);color:var(--stamp-amber);border-color:#ecd6a8;}
-.stamp.miss{background:var(--stamp-red-bg);color:var(--stamp-red);border-color:#e6c9c5;}
-:root[data-theme="dark"] .stamp.hit{border-color:#3a4d33;}
-:root[data-theme="dark"] .stamp.near{border-color:#4d3f22;}
-:root[data-theme="dark"] .stamp.miss{border-color:#4a3330;}
-
-/* neutral result card, sits at the TOP of the page once solved */
-.result-card{
-  margin-bottom:22px;padding:20px 22px;border-radius:var(--radius);
-  background:var(--paper-2);border:1px solid var(--line);
-  border-left:4px solid var(--ink-muted);
-  display:none;
-}
-.result-card.won{border-left-color:var(--stamp-green);}
-.result-card.lost{border-left-color:var(--stamp-red);}
-.result-card h3{margin:0 0 6px;font-size:16px;font-weight:600;color:var(--ink);}
-.result-card.won h3{color:var(--stamp-green);}
-.result-card.lost h3{color:var(--stamp-red);}
-.result-answer{
-  font-family:'Source Serif 4', serif;font-size:28px;font-weight:700;
-  color:var(--ink);margin:6px 0 14px;line-height:1.25;
-}
-#resultStats{margin-bottom:16px;}
-.result-card p{margin:0 0 14px;font-size:13.5px;color:var(--ink-soft);}
-.result-actions{display:flex;gap:10px;flex-wrap:wrap;}
-.btn{
-  display:inline-flex;align-items:center;gap:7px;padding:9px 16px;
-  border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;
-  border:1.5px solid var(--line-strong);background:transparent;color:var(--ink);
-}
-.btn:hover{background:var(--paper);}
-.btn.primary{border-color:var(--ink);}
-
-.signup-box{margin-top:16px;padding-top:16px;border-top:1px solid var(--line);}
-.signup-box p{margin:0 0 10px;font-size:13px;color:var(--ink-soft);}
-.signup-box input{padding:9px 12px;border-radius:8px;border:1.5px solid var(--line-strong);background:var(--paper);color:var(--ink);font-size:16px;flex:1;min-width:180px;}
-
-.share-fallback{margin-top:14px;}
-.share-fallback p{margin:0 0 8px;font-size:12.5px;color:var(--ink-soft);}
-.share-fallback textarea{
-  width:100%;min-height:100px;padding:10px 12px;border-radius:8px;
-  border:1.5px solid var(--line-strong);background:var(--paper);color:var(--ink);
-  font-family:'IBM Plex Mono', monospace;font-size:13px;resize:vertical;
+function seededShuffle(arr, seedStr){
+  const out = arr.slice();
+  const rng = mulberry32(xmur3(seedStr)());
+  for(let i = out.length - 1; i > 0; i--){
+    const j = Math.floor(rng() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
 }
 
-.loading-state, .error-state{padding:40px 20px;text-align:center;color:var(--ink-muted);font-size:14px;}
-.error-state{color:var(--stamp-red);}
-.error-state .detail{font-size:12px;color:var(--ink-muted);margin-top:8px;font-family:'IBM Plex Mono', monospace;}
+function loadGazetteData(){
+  return fetch(DB_URL)
+    .then(function(resp){
+      if(!resp.ok) throw new Error('Could not fetch ' + DB_URL + ' (HTTP ' + resp.status + ')');
+      return resp.arrayBuffer();
+    })
+    .then(function(buf){
+      const wb = XLSX.read(buf, { type: 'array' });
+      const CATS = {};
+      const SCHEDULE = {};
 
-footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-muted);}
+      GAZETTE_CAT_ORDER.forEach(function(key){
+        const prefix = TAB_PREFIX[key];
+        const fmap = FIELD_MAPS[key];
+        const entrySheet = wb.Sheets[prefix + '_Entries'];
+        const groupSheet = wb.Sheets[prefix + '_Groups'];
+        if(!entrySheet || !groupSheet){
+          throw new Error('Missing sheet "' + prefix + '_Entries" or "' + prefix + '_Groups" in the workbook');
+        }
+        const entries = XLSX.utils.sheet_to_json(entrySheet, { defval: null });
+        const groupsRaw = XLSX.utils.sheet_to_json(groupSheet, { defval: null });
 
-/* ---------- modals ---------- */
-.modal-overlay{
-  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);
-  align-items:center;justify-content:center;padding:20px;z-index:100;
-}
-.modal-overlay.open{display:flex;}
-.modal-box{
-  background:var(--paper);border-radius:14px;max-width:560px;width:100%;
-  max-height:85vh;overflow-y:auto;padding:24px;border:1px solid var(--line);
-  box-shadow:0 20px 50px var(--shadow);
-}
-.modal-box h3{margin:0 0 14px;font-size:18px;font-weight:700;}
-.modal-box p{font-size:13.5px;color:var(--ink-soft);line-height:1.55;margin:0 0 12px;}
-.modal-box .modal-close{
-  float:right;background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-muted);
-  line-height:1;
-}
-.modal-example-name{font-size:13px;font-weight:600;margin:14px 0 8px;color:var(--ink-soft);}
+        const groupLookup = {};
+        groupsRaw.forEach(function(g){
+          if(!g.field_name) return;
+          if(!groupLookup[g.field_name]) groupLookup[g.field_name] = {};
+          groupLookup[g.field_name][g.value] = g.group;
+        });
 
-@media (max-width:480px){
-  .brand-logo{font-size:34px;}
-  .cats{grid-template-columns:1fr 1fr;}
-  .tiles{grid-template-columns:repeat(2,1fr);}
-  .header-actions{gap:6px;}
+        const fields = fmap.map(function(m){
+          const f = { k: m[1], l: m[2], t: m[3] };
+          if(f.t === 'c') f.g = groupLookup[m[0]] || {};
+          if(m[4] === 'y') f.isYear = true;
+          return f;
+        });
+
+        const pool = [];
+        entries.forEach(function(row){
+          if(!row.name) return;
+          const item = { name: row.name };
+          let complete = true;
+          for(let i = 0; i < fmap.length; i++){
+            const col = fmap[i][0], jsKey = fmap[i][1];
+            const val = row[col];
+            if(val === null || val === undefined || val === ''){ complete = false; break; }
+            item[jsKey] = val;
+          }
+          if(row.aliases){
+            item.aliases = String(row.aliases).split(',').map(function(a){ return a.trim().toLowerCase(); }).filter(Boolean);
+          } else {
+            item.aliases = [];
+          }
+          if(complete) pool.push(item);
+        });
+
+        CATS[key] = { label: META[key].label, icon: META[key].icon, example: META[key].example, hint: META[key].hint, noun: META[key].noun, desc: META[key].desc, pool: pool, fields: fields };
+        SCHEDULE[key] = seededShuffle(pool.map(function(p){ return p.name; }), 'gazette-' + key);
+      });
+
+      const launchDate = new Date(LAUNCH_DATE_STR + 'T00:00:00Z');
+      const LAUNCH_DAY = Math.floor(launchDate.getTime() / 86400000);
+
+      return { CATS: CATS, CAT_ORDER: GAZETTE_CAT_ORDER, SCHEDULE: SCHEDULE, LAUNCH_DAY: LAUNCH_DAY, SUBJECTS: SUBJECTS, LEAF_TO_SUBJECT: LEAF_TO_SUBJECT };
+    });
 }
+
+function levenshtein(a, b){
+  const m = a.length, n = b.length;
+  if(m === 0) return n;
+  if(n === 0) return m;
+  const dp = new Array(n + 1);
+  for(let j = 0; j <= n; j++) dp[j] = j;
+  for(let i = 1; i <= m; i++){
+    let prev = dp[0];
+    dp[0] = i;
+    for(let j = 1; j <= n; j++){
+      const tmp = dp[j];
+      dp[j] = a[i-1] === b[j-1] ? prev : 1 + Math.min(prev, dp[j], dp[j-1]);
+      prev = tmp;
+    }
+  }
+  return dp[n];
+}
+/* Fuzzy-matches a query against a pool item's name/aliases: exact substring
+   always matches; otherwise allows small typos (distance tolerance scales
+   with query length so short queries aren't matched too loosely). */
+function fuzzyMatchesQuery(item, query){
+  const q = query.toLowerCase().trim();
+  if(!q) return false;
+  const candidates = [item.name.toLowerCase()].concat(item.aliases || []);
+  for(let i = 0; i < candidates.length; i++){
+    const cand = candidates[i];
+    if(cand.includes(q)) return true;
+    const words = cand.split(/\s+/);
+    const tolerance = q.length <= 4 ? 1 : (q.length <= 8 ? 2 : 3);
+    for(let w = 0; w < words.length; w++){
+      if(Math.abs(words[w].length - q.length) <= tolerance && levenshtein(words[w], q) <= tolerance) return true;
+    }
+    if(Math.abs(cand.length - q.length) <= tolerance && levenshtein(cand, q) <= tolerance) return true;
+  }
+  return false;
+}
+
+const gazetteReady = loadGazetteData();
